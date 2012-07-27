@@ -66,6 +66,12 @@ a:hover {
 header {
   padding-top: 35px;
   padding-bottom: 25px;
+  overflow: auto;
+}
+
+header img {
+  float:left;
+  margin: -10px 2em 0 0;
 }
 
 header h1 {
@@ -99,6 +105,7 @@ header h2 {
 }
 
 #downloads {
+  clear: both;
   margin-bottom: 40px;
 }
 
