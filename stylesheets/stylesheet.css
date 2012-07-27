@@ -58,15 +58,21 @@ body {
 
 a {
   color: #d5000d;
+  color: #6f56a2;
 }
 a:hover {
   color: #c5000c;
+  color: #543473;
 }
 
 header {
   padding-top: 35px;
   padding-bottom: 25px;
   overflow: auto;
+}
+
+header a {
+  color: #927fb9;
 }
 
 header img {
