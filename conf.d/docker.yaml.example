@@ -28,7 +28,7 @@ instances:
     # tags: ["extra_tag", "env:example"]
 
     # Exclude containers based on their tags
-    # An excluded container will ne longer report performance metrics or events. However,
+    # An excluded container will no longer report performance metrics or events. However,
     # we still count the number of running and stopped of all containers.
     #
     # How it works: if a tag matches an exclude rule, it won't be included

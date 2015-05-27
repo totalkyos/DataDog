@@ -46,6 +46,19 @@ CGROUP_METRICS = [
             "system": ("docker.cpu.system", "rate", True),
         },
     },
+    {
+        "cgroup": "blkio",
+        "file": None,
+        "metrics": {
+            #metric_name: (dd_name, metric_type, is_common_metric, filename)
+            "sectors": ("docker.io.sectors", "counter", True, 'blkio.sectors'),
+            "io_service_bytes": ("docker.io.io_service_bytes", "monotonic_count", True, 'blkio.io_service_bytes'),
+            "io_serviced": ("docker.io.io_serviced", "monotonic_count", True, 'blkio.io_serviced'),
+            "io_queued": ("docker.io.io_queued", "gauge", True, 'blkio.io_queued'),
+            "throttle.io_service_bytes": ("docker.io.throttle.io_service_bytes", "monotonic_count", True, 'blkio.throttle.io_service_bytes'),
+            "throttle.io_serviced": ("docker.io.throttle.io_serviced", "monotonic_count", True, 'blkio.throttle.io_serviced'),
+        },
+    }
 ]
 
 DOCKER_METRICS = {
@@ -247,15 +260,34 @@ class Docker(AgentCheck):
                 if key in container:
                     getattr(self, metric_type)(dd_key, int(container[key]), tags=container_tags)
             for cgroup in CGROUP_METRICS:
-                stat_file = self._get_cgroup_file(cgroup["cgroup"], container['Id'], cgroup['file'])
-                stats = self._parse_cgroup_file(stat_file)
+                if cgroup.get('file'):
+                    files = [cgroup.get('file')]
+                # blkio metrics are in several files
+                else:
+                    files = [cgroup['metrics'][metric][3] for metric in cgroup['metrics']]
+                stat_files = self._get_cgroup_files(cgroup["cgroup"], container['Id'], files)
+                stats = self._parse_cgroup_files(stat_files)
                 if stats:
-                    for key, (dd_key, metric_type, common_metric) in cgroup['metrics'].iteritems():
-                        if key in stats and (common_metric or collect_uncommon_metrics):
-                            getattr(self, metric_type)(dd_key, int(stats[key]), tags=container_tags)
+                    if cgroup['cgroup'] == 'blkio':
+                        for key, (dd_key, metric_type, common_metric, _) in cgroup['metrics'].items():
+                            if key in stats and (common_metric or collect_uncommon_metrics) and\
+                               not all(v.get('value', '0') == '0' for v in stats[key]):
+                                for stat in stats[key]:
+                                    tags = container_tags + [stat.get('device')] if stat.get('device') is not None\
+                                        else container_tags
+                                    if stat.get('op'):
+                                        dd_key = '{0}_{{0}}'.format(key)
+                                        getattr(self, metric_type)(dd_key.format(stat.get('op').lower()),
+                                                                   int(stat.get('value')),
+                                                                   tags=tags)
+                                    else:
+                                        getattr(self, metric_type)(dd_key, int(stat.get('value')), tags=tags)
+                    else:
+                        for key, (dd_key, metric_type, common_metric) in cgroup['metrics'].iteritems():
+                            if key in stats and (common_metric or collect_uncommon_metrics):
+                                getattr(self, metric_type)(dd_key, int(stats[key]), tags=container_tags)
         if use_filters:
             self.log.debug("List of excluded containers: {0}".format(skipped_container_ids))
-
         return skipped_container_ids
 
     def _make_tag(self, key, value, instance):
@@ -353,7 +385,7 @@ class Docker(AgentCheck):
         return self._get_json("%(url)s/images/json" % instance, params={'all': get_all})
 
     def _get_events(self, instance):
-        """Get the list of events """
+        """Get the list of events."""
         now = int(time.time())
         result = self._get_json(
             "%s/events" % instance["url"],
@@ -409,16 +441,19 @@ class Docker(AgentCheck):
 
         raise Exception("Cannot find Docker cgroup directory. Be sure your system is supported.")
 
-    def _get_cgroup_file(self, cgroup, container_id, filename):
+    def _get_cgroup_files(self, cgroup, container_id, filenames):
         # This can't be initialized at startup because cgroups may not be mounted yet
-        if not self._cgroup_filename_pattern:
-            self._cgroup_filename_pattern = self._find_cgroup_filename_pattern()
+        files = []
+        for filename in filenames:
+            if not self._cgroup_filename_pattern:
+                self._cgroup_filename_pattern = self._find_cgroup_filename_pattern()
 
-        return self._cgroup_filename_pattern % (dict(
-                    mountpoint=self._mountpoints[cgroup],
-                    id=container_id,
-                    file=filename,
-                ))
+            files.append(self._cgroup_filename_pattern % (dict(
+                        mountpoint=self._mountpoints[cgroup],
+                        id=container_id,
+                        file=filename,
+                    )))
+        return files
 
     def _find_cgroup(self, hierarchy, docker_root):
         """Finds the mount point for a specified cgroup hierarchy. Works with
@@ -441,16 +476,58 @@ class Docker(AgentCheck):
             if hierarchy in opts:
                 return os.path.join(docker_root, mountpoint)
 
-    def _parse_cgroup_file(self, stat_file):
-        """Parses a cgroup pseudo file for key/values."""
+    def _parse_cgroup_files(self, stat_files):
+        """Parse a cgroup pseudo file for key/values."""
         fp = None
-        self.log.debug("Opening cgroup file: %s" % stat_file)
-        try:
-            fp = open(stat_file)
-            return dict(map(lambda x: x.split(), fp.read().splitlines()))
-        except IOError:
-            # It is possible that the container got stopped between the API call and now
-            self.log.info("Can't open %s. Metrics for this container are skipped." % stat_file)
-        finally:
-            if fp is not None:
-                fp.close()
+        if len(stat_files) == 1 and 'blkio' not in stat_files[0]:
+            self.log.debug("Opening cgroup file: %s" % stat_files[0])
+            try:
+                fp = open(stat_files[0])
+                return dict(map(lambda x: x.split(), fp.read().splitlines()))
+            except IOError:
+                self.log.info("Can't open %s. Metrics for this container are skipped." % stat_files[0])
+            finally:
+                if fp is not None:
+                    fp.close()
+        # blkio metrics come in several files
+        else:
+            stats = {}
+            for stat_file in stat_files:
+                self.log.debug("Opening cgroup file: %s" % stat_file)
+                try:
+                    if 'blkio.' in stat_file:
+                        stats[stat_file.split('blkio.')[1]] = self._parse_blkio_metrics(stat_file)
+                except IOError:
+                    # It is possible that the container got stopped between the API call and now
+                    self.log.info("Can't open %s. Metrics for this container are skipped." % stat_file)
+                finally:
+                    if fp is not None:
+                        fp.close()
+            return stats
+
+    def _parse_blkio_metrics(self, stat_file):
+        """Parse metrics from the blkio module."""
+        with open(stat_file, 'r') as fp:
+            content = fp.read().splitlines()
+        metrics = []
+        # will match both `io_serviced` and `io_service_bytes`
+        if 'io_service' in stat_file:
+            for line in content:
+                info = line.split()
+                if len(info) == 2:
+                    op, value = info
+                    metrics.append({'op': op, 'value': value})
+                elif len(info) == 3:
+                    device, op, value = line.split()
+                    metrics.append({'device': device, 'op': op, 'value': value})
+        elif 'sectors' in stat_file:
+            for line in content:
+                device, nb_sectors = line.split()
+                metrics.append({'device': device, 'value': nb_sectors})
+        elif 'io_queued' in stat_file:
+            for line in content:
+                op, req_count = line.split()
+                metrics.append({'op': op, 'value': req_count})
+        else:
+            self.log.info('Unrecognized metric - %s. Skipping.' % stat_file.split('/')[-1])
+        return metrics
