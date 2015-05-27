@@ -288,6 +288,7 @@ class Docker(AgentCheck):
                                 getattr(self, metric_type)(dd_key, int(stats[key]), tags=container_tags)
         if use_filters:
             self.log.debug("List of excluded containers: {0}".format(skipped_container_ids))
+
         return skipped_container_ids
 
     def _make_tag(self, key, value, instance):
@@ -479,31 +480,24 @@ class Docker(AgentCheck):
     def _parse_cgroup_files(self, stat_files):
         """Parse a cgroup pseudo file for key/values."""
         fp = None
-        if len(stat_files) == 1 and 'blkio' not in stat_files[0]:
-            self.log.debug("Opening cgroup file: %s" % stat_files[0])
-            try:
+        try:
+            if len(stat_files) == 1 and 'blkio' not in stat_files[0]:
+                self.log.debug("Opening cgroup file: %s" % stat_files[0])
                 fp = open(stat_files[0])
                 return dict(map(lambda x: x.split(), fp.read().splitlines()))
-            except IOError:
-                self.log.info("Can't open %s. Metrics for this container are skipped." % stat_files[0])
-            finally:
-                if fp is not None:
-                    fp.close()
-        # blkio metrics come in several files
-        else:
-            stats = {}
-            for stat_file in stat_files:
-                self.log.debug("Opening cgroup file: %s" % stat_file)
-                try:
+            # blkio metrics come in several files
+            else:
+                stats = {}
+                for stat_file in stat_files:
+                    self.log.debug("Opening cgroup file: %s" % stat_file)
                     if 'blkio.' in stat_file:
                         stats[stat_file.split('blkio.')[1]] = self._parse_blkio_metrics(stat_file)
-                except IOError:
-                    # It is possible that the container got stopped between the API call and now
-                    self.log.info("Can't open %s. Metrics for this container are skipped." % stat_file)
-                finally:
-                    if fp is not None:
-                        fp.close()
-            return stats
+                return stats
+        except IOError:
+            self.log.info("Can't open %s. Metrics for this container are skipped." % stat_files[0])
+        finally:
+            if fp is not None:
+                fp.close()
 
     def _parse_blkio_metrics(self, stat_file):
         """Parse metrics from the blkio module."""
