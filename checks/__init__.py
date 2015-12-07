@@ -302,6 +302,12 @@ class AgentCheck(object):
     def is_check_enabled(cls, name):
         return name in cls._enabled_checks
 
+    @staticmethod
+    def get_auto_config():
+        """Return a basic config object for the current check.
+           Used for service discovery."""
+        raise NotImplementedError()
+
     def __init__(self, name, init_config, agentConfig, instances=None):
         """
         Initialize a new check.

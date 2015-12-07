@@ -92,6 +92,15 @@ class Redis(AgentCheck):
         self.connections = {}
         self.last_timestamp_seen = defaultdict(int)
 
+    @staticmethod
+    def get_auto_config():
+        import simplejson as json
+        config = {
+            'init_config': {},
+            'instance': {"host": "%%host%%", "port": "%%port%%"}
+        }
+        return json.dumps(config)
+
     def get_library_versions(self):
         return {"redis": redis.__version__}
 
