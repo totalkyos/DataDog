@@ -47,12 +47,14 @@ class CaseInsensitiveDict(dict):
 class WMISampler(object):
     """
     WMI Sampler.
+    - inclusive applies to the filters. An inclusive filter will OR filter
+    elements, a non-inclusive will AND the WHERE clause.
     """
     _wmi_locators = {}
     _wmi_connections = {}
 
     def __init__(self, logger, class_name, property_names, filters="", host="localhost",
-                 namespace="root\\cimv2", username="", password=""):
+                 namespace="root\\cimv2", username="", password="", inclusive=False):
         self.logger = logger
 
         # Connection information
@@ -82,6 +84,7 @@ class WMISampler(object):
         self.class_name = class_name
         self.property_names = property_names
         self.filters = filters
+        self.inclusive_filter = inclusive
         self._formatted_filters = None
         self.property_counter_types = None
 
@@ -107,7 +110,7 @@ class WMISampler(object):
         """
         if not self._formatted_filters:
             filters = deepcopy(self.filters)
-            self._formatted_filters = self._format_filter(filters)
+            self._formatted_filters = self._format_filter(filters, self.inclusive_filter)
         return self._formatted_filters
 
     def sample(self):
@@ -251,32 +254,84 @@ class WMISampler(object):
         return connection
 
     @staticmethod
-    def _format_filter(filters):
+    def _format_filter(filters, inclusive=False):
         """
         Transform filters to a comprehensive WQL `WHERE` clause.
+
+        Builds filter from a filter list.
+        - filters: expects a list of dicts, typically:
+                - [{'Property': value},...] or
+                - [{'Property': (comparison_op, value)},...]
+
+                NOTE: If we just provide a value we defailt to '=' comparison operator.
+                Otherwise, specify the operator in a tuple as above: (comp_op, value)
+
+                The filters also support lists/tuples as property 'values' to filter.
+                When such a list is provided, we OR filter for all such property values:
+                - [{'Property': [value1, value2, value3]},...] or
+                - [{'Property': [(cmp_op, value1), (cmp_op, value2)]},...] or
+
+        Normally the filter is expected to be exclusive, such that all filter conditions
+        should be met - therefore we AND all filters. If you'd like to OR, then set
+        inclusive to True.
         """
-        def build_where_clause(fltr):
+        def build_where_clause(fltr, inclusive):
             """
             Recursively build `WHERE` clause.
             """
             f = fltr.pop()
             prop, value = f.popitem()
+            if isinstance(value, tuple):
+                oper = value[0]
+                value = value[1]
+            else:
+                oper = '='
 
             if len(fltr) == 0:
-                return "{property} = '{constant}'".format(
-                    property=prop,
-                    constant=value
+                if isinstance(value, list):
+                    internal_filter = map(lambda x:
+                                          {prop: x} if isinstance(x, tuple)
+                                          else {prop: (oper, x)}, value)
+                    return "( {clause} )".format(clause=build_where_clause(internal_filter, inclusive=True))
+                else:
+                    return "{property} {cmp} '{constant}'".format(
+                        property=prop,
+                        cmp=oper,
+                        constant=value
+                    )
+
+            if isinstance(value, list):
+                internal_filter = map(lambda x: {prop: (oper, x)}, value)
+                if inclusive:
+                    return "( {clause} ) OR {more}".format(
+                        clause=build_where_clause(internal_filter, inclusive=True),
+                        more=build_where_clause(fltr, inclusive)
+                    )
+
+                return "( {clause} ) AND {more}".format(
+                    clause=build_where_clause(internal_filter, inclusive=True),
+                    more=build_where_clause(fltr, inclusive)
                 )
-            return "{property} = '{constant}' AND {more}".format(
+
+            if inclusive:
+                return "{property} {cmp} '{constant}' OR {more}".format(
+                    property=prop,
+                    cmp=oper,
+                    constant=value,
+                    more=build_where_clause(fltr, inclusive)
+                )
+
+            return "{property} {cmp} '{constant}' AND {more}".format(
                 property=prop,
+                cmp=oper,
                 constant=value,
-                more=build_where_clause(fltr)
+                more=build_where_clause(fltr, inclusive)
             )
 
         if not filters:
             return ""
 
-        return " WHERE {clause}".format(clause=build_where_clause(filters))
+        return " WHERE {clause}".format(clause=build_where_clause(filters, inclusive))
 
     def _query(self):
         """
@@ -384,7 +439,8 @@ class WMISampler(object):
 
                 try:
                     item[wmi_property.Name] = float(wmi_property.Value)
-                except ValueError:
+                except (TypeError, ValueError) as e:
                     item[wmi_property.Name] = wmi_property.Value
+
             results.append(item)
         return results
