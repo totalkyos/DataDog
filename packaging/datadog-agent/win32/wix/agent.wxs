@@ -4,7 +4,8 @@
     Language="1033" Codepage="1252" Version="$(var.AgentVersion)" Manufacturer="Datadog Inc.">
         <Package Id="*" Keywords="Installer" Description="Datadog Agent v$(var.AgentVersion)"
           Comments="Copyright 2013 Datadog, Inc." Manufacturer="Datadog Inc."
-          InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252" />
+          InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252"
+          InstallScope="perMachine" />
 
         <Property Id="PREVIOUSVERSIONSINSTALLED" Secure="yes" />
         <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
