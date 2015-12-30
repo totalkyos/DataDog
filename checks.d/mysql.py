@@ -16,6 +16,7 @@ except ImportError:
 from checks import AgentCheck
 from utils.platform import Platform
 from utils.subprocess_output import get_subprocess_output
+from datadog import statsd
 
 GAUGE = "gauge"
 RATE = "rate"
@@ -276,6 +277,7 @@ class MySql(AgentCheck):
     def get_library_versions(self):
         return {"pymysql": pymysql.__version__}
 
+    @statsd.timed('mysql.check.run_time', tags=['version:5.7.x'], use_ms=True)
     def check(self, instance):
         host, port, user, password, mysql_sock, defaults_file, tags, options, queries = \
             self._get_config(instance)
