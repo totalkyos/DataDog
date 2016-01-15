@@ -17,6 +17,8 @@
         </Upgrade>
 
         <Media Id="1" Cabinet="agent.cab" EmbedCab="yes" />
+
+        <PropertyRef Id="WIX_ACCOUNT_LOCALSYSTEM" />
         <PropertyRef Id="WIX_ACCOUNT_USERS" />
 
         <Directory Id="TARGETDIR" Name="SourceDir">
@@ -103,6 +105,7 @@
         <DirectoryRef Id="APPLIDATIONDATADIRECTORY">
             <Component Id="datadog.conf" Guid="83461594-01AC-11E2-BE35-37EC6088709B" NeverOverwrite="yes" Permanent="yes">
                 <File Id="datadog.conf" Name="datadog.conf" Source="$(var.InstallFiles)\datadog_win32.conf">
+                    <Permission User="[WIX_ACCOUNT_LOCALSYSTEM]" GenericAll="yes" />
                     <Permission User="[WIX_ACCOUNT_USERS]" GenericAll="no"/>
                 </File>
             </Component>
