@@ -6,6 +6,10 @@ import os
 from docker import Client
 from docker import tls
 
+# project
+from utils.checkfiles import get_conf_path
+
+
 class MountException(Exception):
     pass
 
@@ -17,8 +21,10 @@ CHECK_NAME = 'docker_daemon'
 log = logging.getLogger(__name__)
 _docker_client_settings = {"version": DEFAULT_VERSION}
 
+
 def is_dockerized():
     return os.environ.get("DOCKER_DD_AGENT") == "yes"
+
 
 def get_docker_settings():
     global _docker_client_settings
@@ -108,7 +114,6 @@ def find_cgroup_filename_pattern(mountpoints, container_id):
         elif os.path.exists(stat_file_path_docker_daemon):
             return os.path.join('%(mountpoint)s/docker-daemon/docker/%(id)s/%(file)s')
 
-
     raise MountException("Cannot find Docker cgroup directory. Be sure your system is supported.")
 
 
@@ -150,26 +155,9 @@ def container_name_extractor(co):
 
 def get_hostname():
     """Return the `Name` param from `docker info` to use as the hostname"""
-    from config import get_confd_path, check_yaml, PathNotFound
+    from config import check_yaml
 
-    confd_path = ''
-
-    try:
-        confd_path = get_confd_path()
-    except PathNotFound:
-        log.error("Couldn't find the check configuration folder, not using the docker hostname.")
-        return None
-
-    conf_path = os.path.join(confd_path, '%s.yaml' % CHECK_NAME)
-    if not os.path.exists(conf_path):
-        default_conf_path = os.path.join(confd_path, '%s.yaml.default' % CHECK_NAME)
-        if not os.path.exists(default_conf_path):
-            log.error("Couldn't find any configuration file for the docker check."
-                      " Not using the docker hostname.")
-            return None
-        else:
-            conf_path = default_conf_path
-
+    conf_path = get_conf_path(CHECK_NAME)
     check_config = check_yaml(conf_path)
     init_config, instances = check_config.get('init_config', {}), check_config['instances']
     init_config = {} if init_config is None else init_config
