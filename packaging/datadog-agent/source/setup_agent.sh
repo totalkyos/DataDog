@@ -117,6 +117,7 @@ unknown_error() {
         [Nn]* ) report_manual; break;;
         * ) echo "Please answer yes or no.";;
     esac
+    sleep 1
   done
 }
 
