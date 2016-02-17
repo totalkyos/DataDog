@@ -8,7 +8,9 @@ from urllib3.exceptions import TimeoutError
 
 # project
 from utils.checkfiles import get_check_class, get_auto_conf
-
+from utils.singleton import Singleton
+from utils.service_discovery.etcd_config_store import EtcdStore
+from utils.service_discovery.consul_config_store import ConsulStore
 
 log = logging.getLogger(__name__)
 
@@ -23,27 +25,25 @@ AUTO_CONF_IMAGES = {
 }
 
 
+def get_config_store(agentConfig):
+    if agentConfig.get('sd_config_backend') == 'etcd':
+        return EtcdStore(agentConfig)
+    elif agentConfig.get('sd_config_backend') == 'consul':
+        return ConsulStore(agentConfig)
+    elif agentConfig.get('sd_config_backend') is None:
+        return StubStore(agentConfig)
+
+
 class KeyNotFound(Exception):
     pass
 
 
+
 class ConfigStore(object):
     """Singleton for config stores"""
-    _instance = None
-    previous_config_index = None
+    __metaclass__ = Singleton
 
-    def __new__(cls, *args, **kwargs):
-        from utils.service_discovery.etcd_config_store import EtcdStore
-        from utils.service_discovery.consul_config_store import ConsulStore
-        if cls._instance is None:
-            agentConfig = kwargs.get('agentConfig', {})
-            if agentConfig.get('sd_config_backend') == 'etcd':
-                cls._instance = object.__new__(EtcdStore, agentConfig)
-            elif agentConfig.get('sd_config_backend') == 'consul':
-                cls._instance = object.__new__(ConsulStore, agentConfig)
-            elif agentConfig.get('sd_config_backend') is None:
-                cls._instance = object.__new__(StubStore, agentConfig)
-        return cls._instance
+    previous_config_index = None
 
     def __init__(self, agentConfig):
         self.client = None
