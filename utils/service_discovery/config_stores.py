@@ -20,6 +20,7 @@ AUTO_CONF_IMAGES = {
     'nginx': 'nginx',
     'consul': 'consul',
     'elasticsearch': 'elastic',
+    'deis/redis': 'redisdb'
 }
 
 
