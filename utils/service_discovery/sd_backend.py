@@ -45,13 +45,24 @@ class ServiceDiscoveryBackend(object):
         config = (init_config_tpl, instance_tpl)
         for tpl in config:
             for key in tpl:
+                # iterate over template variables found in the templates
                 for var in self.PLACEHOLDER_REGEX.findall(str(tpl[key])):
                     if var.strip('%') in variables and variables[var.strip('%')]:
-                        tpl[key] = tpl[key].replace(var, variables[var.strip('%')])
+                        # if the variable is found in a list (for example {'tags': ['%%tags%%', 'env:prod']})
+                        # we need to iterate over its elements
+                        if isinstance(tpl[key], list):
+                            for idx, val in enumerate(tpl[key]):
+                                tpl[key][idx] = val.replace(var, variables[var.strip('%')])
+                        else:
+                            tpl[key] = tpl[key].replace(var, variables[var.strip('%')])
                     else:
                         log.warning('Failed to find interpolate variable {0} for the {1} parameter.'
                                     ' The check might not be configured properly.'.format(var, key))
-                        tpl[key].replace(var, '')
+                        if isinstance(tpl[key], list):
+                            for idx, val in enumerate(tpl[key]):
+                                tpl[key][idx] = val.replace(var, '')
+                        else:
+                            tpl[key].replace(var, '')
         return config
 
     @classmethod
@@ -77,7 +88,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         self.VAR_MAPPING = {
             'host': self._get_host,
             'port': self._get_ports,
-            'tags': self._get_tags,
+            'tags': self._get_additional_tags,
         }
         ServiceDiscoveryBackend.__init__(self, agentConfig)
 
@@ -131,36 +142,32 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         ports = sorted(ports, key=lambda x: int(x))
         return ports
 
-    def _get_tags(self, container_inspect):
-        """Extract useful tags from docker or platform APIs."""
+    def get_tags(self, container_inspect):
+        """Extract useful tags from docker or platform APIs. These are collected by default."""
         tags = []
-        tag_dict = {
-            'kube_replication_controller': None,
-            'kube_namespace': None,
-            'pod_name': None,
-            'node_name': None,
-        }
         pod_metadata = self._get_kube_config(container_inspect.get('Id'), 'metadata')
-        pod_spec = self._get_kube_config(container_inspect.get('Id'), 'spec')
 
         # get labels
         kube_labels = pod_metadata.get('labels', {})
-        for tag, value in kube_labels.iteritems():
-            tags.append('%s:%s' % (tag, value))
+        for label, value in kube_labels.iteritems():
+            tags.append('%s:%s' % (label, value))
 
         # get replication controller
         created_by = json.loads(pod_metadata.get('annotations', {}).get('kubernetes.io/created-by', '{}'))
         if created_by.get('reference', {}).get('kind') == 'ReplicationController':
-            tag_dict['kube_replication_controller'] = created_by.get('reference', {}).get('name')
+            tags.append('kube_replication_controller:%s' % created_by.get('reference', {}).get('name'))
 
-        tag_dict['kube_namespace'] = pod_metadata.get('namespace')
-        tag_dict['pod_name'] = pod_metadata.get('name')
-        tag_dict['node_name'] = pod_spec.get('nodeName')
+        # get kubernetes namespace
+        tags.append('kube_namespace:%s' % pod_metadata.get('namespace'))
 
-        for tag, value in tag_dict.iteritems():
-            if value is not None:
-                tags.append('%s:%s' % (tag, value))
+        return tags
 
+    def _get_additional_tags(self, container_inspect):
+        tags = []
+        pod_metadata = self._get_kube_config(container_inspect.get('Id'), 'metadata')
+        pod_spec = self._get_kube_config(container_inspect.get('Id'), 'spec')
+        tags.append('node_name:%s' % pod_spec.get('nodeName'))
+        tags.append('pod_name:%s' % pod_metadata.get('name'))
         return tags
 
     def _get_kube_config(self, c_id, key):
@@ -188,17 +195,21 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         configs = {}
 
         for image, cid, labels in containers:
-            conf = self._get_check_config(cid, image)
-            if conf is not None:
-                check_name = conf[0]
-                # build instances list if needed
-                if configs.get(check_name) is None:
-                    configs[check_name] = (conf[1], [conf[2]])
-                else:
-                    if configs[check_name][0] != conf[1]:
-                        log.warning('different versions of `init_config` found for check {0}.'
-                                    ' Keeping the first one found.'.format(check_name))
-                    configs[check_name][1].append(conf[2])
+            try:
+                conf = self._get_check_config(cid, image)
+                if conf is not None:
+                    check_name = conf[0]
+                    # build instances list if needed
+                    if configs.get(check_name) is None:
+                        configs[check_name] = (conf[1], [conf[2]])
+                    else:
+                        if configs[check_name][0] != conf[1]:
+                            log.warning('different versions of `init_config` found for check {0}.'
+                                        ' Keeping the first one found.'.format(check_name))
+                        configs[check_name][1].append(conf[2])
+            except Exception:
+                log.exception('Building config for container %s based on image %s using service'
+                              ' discovery failed, leaving it alone.' % (cid, image))
         log.debug('check configs: %s' % configs)
         return configs
 
@@ -213,6 +224,12 @@ class SDDockerBackend(ServiceDiscoveryBackend):
 
         check_name, init_config_tpl, instance_tpl, variables = template_config
         var_values = {}
+
+        # add default tags to the instance
+        tags = instance_tpl.get('tags', [])
+        tags += self.get_tags(inspect)
+        instance_tpl['tags'] = tags
+
         for v in variables:
             # variables can be suffixed with an index in case a list is found
             var_parts = v.split('_')
@@ -228,7 +245,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
                     else:
                         var_values[v] = res
                 except Exception as ex:
-                    log.error("Could not find a value for the template variable %s: %s", (v, ex))
+                    log.error("Could not find a value for the template variable %s: %s" % (v, ex))
             else:
                 log.error("No method was found to interpolate template variable %s." % v)
         init_config, instances = self._render_template(init_config_tpl or {}, instance_tpl or {}, var_values)
@@ -257,10 +274,10 @@ class SDDockerBackend(ServiceDiscoveryBackend):
             variables = map(lambda x: x.strip('%'), variables)
             if not isinstance(init_config_tpl, dict):
                 init_config_tpl = json.loads(init_config_tpl)
-                if not isinstance(instance_tpl, dict):
-                    instance_tpl = json.loads(instance_tpl)
+            if not isinstance(instance_tpl, dict):
+                instance_tpl = json.loads(instance_tpl)
         except json.JSONDecodeError:
-            log.error('Failed to decode the JSON template fetched from {0}.'
-                      'Auto-config for {1} failed.'.format(config_backend, image_name))
+            log.exception('Failed to decode the JSON template fetched from {0}.'
+                          ' Auto-config for {1} failed.'.format(config_backend, image_name))
             return None
         return (check_name, init_config_tpl, instance_tpl, variables)
