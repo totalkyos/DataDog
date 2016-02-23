@@ -1,3 +1,6 @@
+docker_images:
+  - kyototycoon
+
 init_config:
 
 instances:

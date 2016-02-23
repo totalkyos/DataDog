@@ -1,3 +1,6 @@
+docker_images:
+  - redis
+
 init_config:
 
 instances:

@@ -594,7 +594,7 @@ class DockerDaemon(AgentCheck):
             if event.get('status') in CONFIG_RELOAD_STATUS:
                 should_reload_conf = True
         self._last_event_collection_ts = now
-        if all([should_reload_conf, self._service_discovery]):
+        if should_reload_conf and self._service_discovery:
             self.agentConfig['reload_check_configs'] = True
         return events
 

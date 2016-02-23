@@ -1,3 +1,6 @@
+docker_images:
+  - consul
+
 init_config:
 
 instances:

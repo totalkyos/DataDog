@@ -427,9 +427,7 @@ def get_config(parse_args=True, cfg_path=None, options=None):
             agentConfig['sd_config_backend'] = conf_backend
 
             additional_config = ConfigStore.extract_sd_config(config)
-
-            for name, value in additional_config.iteritems():
-                agentConfig[name] = value
+            agentConfig.update(additional_config)
 
         # Concerns only Windows
         if config.has_option('Main', 'use_web_info_page'):

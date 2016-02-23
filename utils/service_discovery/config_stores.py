@@ -7,21 +7,12 @@ from os import path
 from urllib3.exceptions import TimeoutError
 
 # project
-from utils.checkfiles import get_check_class, get_auto_conf
+from utils.checkfiles import get_check_class, get_auto_conf, get_auto_conf_images
 
 
 log = logging.getLogger(__name__)
 
 SD_TEMPLATE_DIR = '/datadog/check_configs'
-
-AUTO_CONF_IMAGES = {
-    # image_name: check_name
-    'redis': 'redisdb',
-    'nginx': 'nginx',
-    'consul': 'consul',
-    'elasticsearch': 'elastic',
-    'deis/redis': 'redisdb'
-}
 
 
 class KeyNotFound(Exception):
@@ -52,6 +43,7 @@ class ConfigStore(object):
         self.settings = self._extract_settings(agentConfig)
         self.client = self.get_client()
         self.sd_template_dir = agentConfig.get('sd_template_dir')
+        self.AUTO_CONF_IMAGES = get_auto_conf_images(agentConfig)
 
     @classmethod
     def _drop(cls):
@@ -68,22 +60,24 @@ class ConfigStore(object):
         raise NotImplementedError()
 
     def _get_auto_config(self, image_name):
-        for key in AUTO_CONF_IMAGES:
-            if key == image_name:
-                check_name = AUTO_CONF_IMAGES[key]
-                check = get_check_class(self.agentConfig, check_name)
-                if check is None:
-                    log.info("Could not find an auto configuration template for %s."
-                             " Leaving it unconfigured." % image_name)
-                    return None
-                auto_conf = get_auto_conf(self.agentConfig, check_name)
-                init_config, instances = auto_conf.get('init_config'), auto_conf.get('instances')
+        if image_name in self.AUTO_CONF_IMAGES:
+            check_name = self.AUTO_CONF_IMAGES[image_name]
 
-                # stringify the dict to be consistent with what comes from the config stores
-                init_config_tpl = json.dumps(init_config) if init_config else '{}'
-                instance_tpl = json.dumps(instances[0]) if instances and len(instances) > 0 else '{}'
+            # get the check class to verify it matches
+            check = get_check_class(self.agentConfig, check_name)
+            if check is None:
+                log.info("Could not find an auto configuration template for %s."
+                         " Leaving it unconfigured." % image_name)
+                return None
 
-                return (check_name, init_config_tpl, instance_tpl)
+            auto_conf = get_auto_conf(self.agentConfig, check_name)
+            init_config, instances = auto_conf.get('init_config'), auto_conf.get('instances')
+
+            # stringify the dict to be consistent with what comes from the config stores
+            init_config_tpl = json.dumps(init_config) if init_config else '{}'
+            instance_tpl = json.dumps(instances[0]) if instances and len(instances) > 0 else '{}'
+
+            return (check_name, init_config_tpl, instance_tpl)
         return None
 
     def get_check_tpl(self, image, **kwargs):

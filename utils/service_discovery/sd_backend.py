@@ -1,5 +1,6 @@
 # std
 import logging
+import os
 import re
 import requests
 import simplejson as json
@@ -145,20 +146,22 @@ class SDDockerBackend(ServiceDiscoveryBackend):
     def get_tags(self, container_inspect):
         """Extract useful tags from docker or platform APIs. These are collected by default."""
         tags = []
-        pod_metadata = self._get_kube_config(container_inspect.get('Id'), 'metadata')
+        # if is_kubernetes
+        if os.environ.get('KUBERNETES_PORT', False):
+            pod_metadata = self._get_kube_config(container_inspect.get('Id'), 'metadata')
 
-        # get labels
-        kube_labels = pod_metadata.get('labels', {})
-        for label, value in kube_labels.iteritems():
-            tags.append('%s:%s' % (label, value))
+            # get labels
+            kube_labels = pod_metadata.get('labels', {})
+            for label, value in kube_labels.iteritems():
+                tags.append('%s:%s' % (label, value))
 
-        # get replication controller
-        created_by = json.loads(pod_metadata.get('annotations', {}).get('kubernetes.io/created-by', '{}'))
-        if created_by.get('reference', {}).get('kind') == 'ReplicationController':
-            tags.append('kube_replication_controller:%s' % created_by.get('reference', {}).get('name'))
+            # get replication controller
+            created_by = json.loads(pod_metadata.get('annotations', {}).get('kubernetes.io/created-by', '{}'))
+            if created_by.get('reference', {}).get('kind') == 'ReplicationController':
+                tags.append('kube_replication_controller:%s' % created_by.get('reference', {}).get('name'))
 
-        # get kubernetes namespace
-        tags.append('kube_namespace:%s' % pod_metadata.get('namespace'))
+            # get kubernetes namespace
+            tags.append('kube_namespace:%s' % pod_metadata.get('namespace'))
 
         return tags
 
@@ -226,9 +229,10 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         var_values = {}
 
         # add default tags to the instance
-        tags = instance_tpl.get('tags', [])
-        tags += self.get_tags(inspect)
-        instance_tpl['tags'] = tags
+        tags = self.get_tags(inspect)
+        if tags:
+            tags += instance_tpl.get('tags', [])
+            instance_tpl['tags'] = tags
 
         for v in variables:
             # variables can be suffixed with an index in case a list is found

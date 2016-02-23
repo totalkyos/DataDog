@@ -3,6 +3,7 @@
 import itertools
 import logging
 import os
+from urlparse import urljoin
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +50,6 @@ def get_check_class(agentConfig, check_name):
 def get_auto_conf(agentConfig, check_name):
     """Return the yaml auto_config dict for a check name (None if it doesn't exist)."""
     from config import check_yaml, PathNotFound, get_auto_confd_path
-    auto_conf, auto_confd_path = None, None
 
     try:
         auto_confd_path = get_auto_confd_path()
@@ -65,6 +65,37 @@ def get_auto_conf(agentConfig, check_name):
     try:
         auto_conf = check_yaml(auto_conf_path)
     except Exception as e:
-        log.error("Enable to load the auto-config, yaml file.\n%s" % str(e))
+        log.error("Enable to load the auto-config, yaml file."
+                  "Auto-config will not work for this check.\n%s" % str(e))
+        return None
 
     return auto_conf
+
+
+def get_auto_conf_images(agentConfig):
+    """Walk through the auto_config folder and build a dict of auto-configurable images."""
+    from config import check_yaml, PathNotFound, get_auto_confd_path
+    auto_conf_images = {
+        # image_name: check_name
+    }
+
+    try:
+        auto_confd_path = get_auto_confd_path()
+    except PathNotFound:
+        log.error("Couldn't find the check auto-configuration folder, no auto configuration will be used.")
+        return None
+
+    # walk through the auto-config dir
+    for yaml_file in os.listdir(auto_confd_path):
+        check_name = yaml_file.split('.')[0]
+        try:
+            # load the config file
+            auto_conf = check_yaml(urljoin(auto_confd_path, yaml_file))
+        except Exception as e:
+            log.error("Enable to load the auto-config, yaml file.\n%s" % str(e))
+            auto_conf = {}
+        # extract the supported image list
+        images = auto_conf.get('docker_images', [])
+        for image in images:
+            auto_conf_images[image] = check_name
+    return auto_conf_images
