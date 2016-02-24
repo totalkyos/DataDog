@@ -116,7 +116,15 @@ class ConfigStore(object):
 
     def crawl_config_template(self):
         """Return whether or not configuration templates have changed since the previous crawl"""
-        config_index = self.client_read(self.sd_template_dir.lstrip('/'), recursive=True, watch=True)
+        try:
+            config_index = self.client_read(self.sd_template_dir.lstrip('/'), recursive=True, watch=True)
+        except KeyNotFound:
+            log.debug('Config template not found (normal if running on auto-config alone).'
+                      ' Not Triggering a config reload.')
+            return False
+        except TimeoutError:
+            log.warning('Request for the configuration template timed out, not triggering a config reload.')
+            return False
         # Initialize the config index reference
         if self.previous_config_index is None:
             self.previous_config_index = config_index

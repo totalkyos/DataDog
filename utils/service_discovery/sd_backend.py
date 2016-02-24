@@ -143,13 +143,17 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         ports = sorted(ports, key=lambda x: int(x))
         return ports
 
-    def get_tags(self, container_inspect):
+    def get_tags(self, c_inspect):
         """Extract useful tags from docker or platform APIs. These are collected by default."""
         tags = []
         # if is_kubernetes
         if os.environ.get('KUBERNETES_PORT', False):
-            pod_metadata = self._get_kube_config(container_inspect.get('Id'), 'metadata')
+            pod_metadata = self._get_kube_config(c_inspect.get('Id'), 'metadata')
 
+            if pod_metadata is None:
+                log.warning("Failed to fetch pod metadata for container %s."
+                            " Kubernetes tags may be missing." % c_inspect.get('Id'))
+                return []
             # get labels
             kube_labels = pod_metadata.get('labels', {})
             for label, value in kube_labels.iteritems():
@@ -277,11 +281,11 @@ class SDDockerBackend(ServiceDiscoveryBackend):
                 self.PLACEHOLDER_REGEX.findall(str(instance_tpl))
             variables = map(lambda x: x.strip('%'), variables)
             if not isinstance(init_config_tpl, dict):
-                init_config_tpl = json.loads(init_config_tpl)
+                init_config_tpl = json.loads(init_config_tpl or '{}')
             if not isinstance(instance_tpl, dict):
                 instance_tpl = json.loads(instance_tpl)
         except json.JSONDecodeError:
-            log.exception('Failed to decode the JSON template fetched from {0}.'
-                          ' Auto-config for {1} failed.'.format(config_backend, image_name))
+            log.exception('Failed to decode the JSON template fetched from {0}. Configuration'
+                          ' by service discovery failed for {1}.'.format(config_backend, image_name))
             return None
         return (check_name, init_config_tpl, instance_tpl, variables)
