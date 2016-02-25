@@ -200,34 +200,50 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         """Get the config for all docker containers running on the host."""
         containers = [(container.get('Image').split(':')[0].split('/')[-1], container.get('Id'), container.get('Labels')) for container in self.docker_client.containers()]
         configs = {}
+        # used by the configcheck agent command to trace where check configs come from
+        trace_config = self.agentConfig.get('trace_config', False)
 
         for image, cid, labels in containers:
             try:
-                conf = self._get_check_config(cid, image)
+                conf = self._get_check_config(cid, image, trace_config=trace_config)
+                if trace_config and conf is not None:
+                    source, conf = conf
                 if conf is not None:
                     check_name = conf[0]
                     # build instances list if needed
                     if configs.get(check_name) is None:
-                        configs[check_name] = (conf[1], [conf[2]])
+                        if trace_config:
+                            configs[check_name] = (source, (conf[1], [conf[2]]))
+                        else:
+                            configs[check_name] = (conf[1], [conf[2]])
                     else:
-                        if configs[check_name][0] != conf[1]:
-                            log.warning('different versions of `init_config` found for check {0}.'
-                                        ' Keeping the first one found.'.format(check_name))
-                        configs[check_name][1].append(conf[2])
+                        if trace_config:
+                            if configs[check_name][1][0] != conf[1]:
+                                log.warning('different versions of `init_config` found for check {0}.'
+                                            ' Keeping the first one found.'.format(check_name))
+                            configs[check_name][1][1].append(conf[2])
+                        else:
+                            if configs[check_name][0] != conf[1]:
+                                log.warning('different versions of `init_config` found for check {0}.'
+                                            ' Keeping the first one found.'.format(check_name))
+                            configs[check_name][1].append(conf[2])
             except Exception:
                 log.exception('Building config for container %s based on image %s using service'
                               ' discovery failed, leaving it alone.' % (cid[:12], image))
         log.debug('check configs: %s' % configs)
         return configs
 
-    def _get_check_config(self, c_id, image):
+    def _get_check_config(self, c_id, image, trace_config=False):
         """Retrieve a configuration template and fill it with data pulled from docker."""
         inspect = self.docker_client.inspect_container(c_id)
-        template_config = self._get_template_config(image)
+        template_config = self._get_template_config(image, trace_config=trace_config)
         if template_config is None:
             log.debug('Template config is None, container %s with image %s '
                       'will be left unconfigured.' % (c_id[:12], image))
             return None
+
+        if trace_config:
+            source, template_config = template_config
 
         check_name, init_config_tpl, instance_tpl, variables = template_config
         var_values = {}
@@ -253,23 +269,29 @@ class SDDockerBackend(ServiceDiscoveryBackend):
                     else:
                         var_values[v] = res
                 except Exception as ex:
-                    log.error("Could not find a value for the template variable %s: %s" % (v, ex))
+                    log.error("Could not find a value for the template variable %s: %s" % (v, str(ex)))
             else:
                 log.error("No method was found to interpolate template variable %s." % v)
         init_config, instances = self._render_template(init_config_tpl or {}, instance_tpl or {}, var_values)
+
+        if trace_config:
+            return (source, (check_name, init_config, instances))
+
         return (check_name, init_config, instances)
 
-    def _get_template_config(self, image_name):
+    def _get_template_config(self, image_name, trace_config=False):
         """Extract a template config from a K/V store and returns it as a dict object."""
         config_backend = self.agentConfig.get('sd_config_backend')
         if config_backend is None:
             auto_conf = True
-            log.info('No supported configuration backend was provided, using auto-config only.')
+            log.warning('No supported configuration backend was provided, using auto-config only.')
         else:
             auto_conf = False
 
-        tpl = self.config_store.get_check_tpl(image_name, auto_conf=auto_conf)
+        tpl = self.config_store.get_check_tpl(image_name, auto_conf=auto_conf, trace_config=trace_config)
 
+        if trace_config and tpl is not None:
+            source, tpl = tpl
         if tpl is not None and len(tpl) == 3:
             check_name, init_config_tpl, instance_tpl = tpl
         else:
@@ -288,4 +310,8 @@ class SDDockerBackend(ServiceDiscoveryBackend):
             log.exception('Failed to decode the JSON template fetched from {0}. Configuration'
                           ' by service discovery failed for {1}.'.format(config_backend, image_name))
             return None
+
+        if trace_config:
+            return (source, (check_name, init_config_tpl, instance_tpl, variables))
+
         return (check_name, init_config_tpl, instance_tpl, variables)

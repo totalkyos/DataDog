@@ -43,6 +43,7 @@ from utils.flare import configcheck, Flare
 from utils.jmx import jmx_command
 from utils.pidfile import PidFile
 from utils.profile import AgentProfiler
+from utils.service_discovery.configcheck import sd_configcheck
 from utils.service_discovery.config_stores import ConfigStore
 
 # Constants
@@ -188,7 +189,10 @@ class Agent(Daemon):
             # Look for change in the config template store to trigger a config reload
             if self._agentConfig.get('service_discovery') is True and \
                self._agentConfig.get('reload_check_configs') is False:
-                self._agentConfig['reload_check_configs'] = ConfigStore(self._agentConfig).crawl_config_template()
+                try:
+                    self._agentConfig['reload_check_configs'] = ConfigStore(self._agentConfig).crawl_config_template()
+                except Exception as e:
+                    log.warn('Something went wrong while looking for config template changes: %s' % str(e))
 
             # Check if we should run service discovery
             # This flag can be set through the docker_daemon check or ConfigStore.crawl_config_template
@@ -380,6 +384,8 @@ def main():
 
     elif 'configcheck' == command or 'configtest' == command:
         configcheck()
+        if agentConfig.get('service_discovery', False):
+            sd_configcheck(agentConfig)
 
     elif 'jmx' == command:
         jmx_command(args[1:], agentConfig)

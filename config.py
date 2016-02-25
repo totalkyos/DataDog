@@ -42,6 +42,7 @@ DEFAULT_CHECK_FREQUENCY = 15   # seconds
 LOGGING_MAX_BYTES = 5 * 1024 * 1024
 SD_BACKENDS = ['docker']
 SD_CONFIG_BACKENDS = ['etcd', 'consul']
+CONFIG_FROM_FILE = 'YAML file'
 
 log = logging.getLogger(__name__)
 
@@ -835,6 +836,11 @@ def load_check_directory(agentConfig, hostname):
     deprecated_checks = {}
     agentConfig['checksd_hostname'] = hostname
 
+    # for debugging purpose
+    if agentConfig.get('trace_config'):
+        configs_and_sources = {
+            # check_name: (config_source, config)
+        }
     deprecated_configs_enabled = [v for k, v in OLD_STYLE_PARAMETERS if len([l for l in agentConfig if l.startswith(k)]) > 0]
     for deprecated_config in deprecated_configs_enabled:
         msg = "Configuring %s in datadog.conf is not supported anymore. Please use conf.d" % deprecated_config
@@ -889,17 +895,29 @@ def load_check_directory(agentConfig, hostname):
                               "Skipping check".format(default_conf_path))
                     continue
                 else:
-                    sd_init_config, sd_instances = service_disco_configs[check_name]
+                    # flag set by the configcheck command to track where all configs come from
+                    # if it's set, service_disco_configs will look like:
+                    # 'check_name': (config_src, (sd_init_config, sd_instances)) instead
+                    if agentConfig.get('trace_config'):
+                        sd_init_config, sd_instances = service_disco_configs[check_name][1]
+                        configs_and_sources[check_name] = (
+                            service_disco_configs[check_name][0],
+                            {'init_config': sd_init_config, 'instances': sd_instances})
+                    else:
+                        sd_init_config, sd_instances = service_disco_configs[check_name]
                     check_config = {'init_config': sd_init_config, 'instances': sd_instances}
                     skip_config_lookup = True
 
-            conf_path = default_conf_path
-            conf_exists = True
+            else:
+                conf_path = default_conf_path
+                conf_exists = True
 
         if not skip_config_lookup:
             if conf_exists:
                 try:
                     check_config = check_yaml(conf_path)
+                    if agentConfig.get('trace_config'):
+                        configs_and_sources[check_name] = (CONFIG_FROM_FILE, check_config)
                 except Exception, e:
                     log.exception("Unable to parse yaml config in %s" % conf_path)
                     traceback_message = traceback.format_exc()
@@ -915,6 +933,8 @@ def load_check_directory(agentConfig, hostname):
                                     "and will be removed in a future version. "
                                     "Please use conf.d")
                         check_config = {'instances': [dict((key, agentConfig[key]) for key in agentConfig if key in NAGIOS_OLD_CONF_KEYS)]}
+                        if agentConfig.get('trace_config'):
+                            configs_and_sources[check_name] = (CONFIG_FROM_FILE, check_config)
                     else:
                         continue
                 else:
@@ -975,6 +995,10 @@ def load_check_directory(agentConfig, hostname):
     init_failed_checks.update(deprecated_checks)
     log.info('initialized checks.d checks: %s' % [k for k in initialized_checks.keys() if k != AGENT_METRICS_CHECK_NAME])
     log.info('initialization failed checks.d checks: %s' % init_failed_checks.keys())
+
+    if agentConfig.get('trace_config'):
+        return configs_and_sources
+
     return {'initialized_checks': initialized_checks.values(),
             'init_failed_checks': init_failed_checks,
             }

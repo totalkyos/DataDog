@@ -13,6 +13,8 @@ from utils.checkfiles import get_check_class, get_auto_conf, get_auto_conf_image
 log = logging.getLogger(__name__)
 
 SD_TEMPLATE_DIR = '/datadog/check_configs'
+CONFIG_FROM_AUTOCONF = 'auto-configuration'
+CONFIG_FROM_TEMPLATE = 'template'
 
 
 class KeyNotFound(Exception):
@@ -83,10 +85,14 @@ class ConfigStore(object):
     def get_check_tpl(self, image, **kwargs):
         """Retrieve template config strings from the ConfigStore."""
         # this flag is used when no valid configuration store was provided
+        trace_config = kwargs.get('trace_config', False)
+        source = ''
+
         if kwargs.get('auto_conf') is True:
             auto_config = self._get_auto_config(image)
             if auto_config is not None:
                 check_name, init_config_tpl, instance_tpl = auto_config
+                source = CONFIG_FROM_AUTOCONF
             else:
                 log.debug('No auto config was found for image %s, leaving it alone.' % image)
                 return None
@@ -96,12 +102,14 @@ class ConfigStore(object):
                 check_name = self.client_read(path.join(self.sd_template_dir, image, 'check_name').lstrip('/'))
                 init_config_tpl = self.client_read(path.join(self.sd_template_dir, image, 'init_config').lstrip('/'))
                 instance_tpl = self.client_read(path.join(self.sd_template_dir, image, 'instance').lstrip('/'))
+                source = CONFIG_FROM_TEMPLATE
             except (KeyNotFound, TimeoutError):
                 # If it failed, try to read from auto-config templates
                 log.info("Could not find directory {0} in the config store, "
                          "trying to auto-configure the check...".format(image))
                 auto_config = self._get_auto_config(image)
                 if auto_config is not None:
+                    source = CONFIG_FROM_AUTOCONF
                     check_name, init_config_tpl, instance_tpl = auto_config
                 else:
                     log.debug('No auto config was found for image %s, leaving it alone.' % image)
@@ -111,7 +119,10 @@ class ConfigStore(object):
                     'Fetching the value for {0} in the config store failed, '
                     'this check will not be configured by the service discovery.'.format(image))
                 return None
-        template = (check_name, init_config_tpl, instance_tpl)
+        if trace_config:
+            template = (source, (check_name, init_config_tpl, instance_tpl))
+        else:
+            template = (check_name, init_config_tpl, instance_tpl)
         return template
 
     def crawl_config_template(self):
@@ -123,8 +134,8 @@ class ConfigStore(object):
                       ' Not Triggering a config reload.')
             return False
         except TimeoutError:
-            log.warning('Request for the configuration template timed out, not triggering a config reload.')
-            return False
+            msg = 'Request for the configuration template timed out.'
+            raise Exception(msg)
         # Initialize the config index reference
         if self.previous_config_index is None:
             self.previous_config_index = config_index
