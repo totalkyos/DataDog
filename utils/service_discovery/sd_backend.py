@@ -98,7 +98,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         ip_addr = container_inspect.get('NetworkSettings', {}).get('IPAddress')
         if not ip_addr:
             log.debug("Didn't find the IP address for container %s (%s), using the kubernetes way." %
-                      (container_inspect.get('Id', ''), container_inspect.get('Config', {}).get('Image', '')))
+                      (container_inspect.get('Id', '')[:12], container_inspect.get('Config', {}).get('Image', '')))
             # kubernetes case
             pod_list = self._get_pod_list()
             c_id = container_inspect.get('Id')
@@ -123,7 +123,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
             ports = map(lambda x: x.split('/')[0], container_inspect['NetworkSettings']['Ports'].keys())
         except (IndexError, KeyError, AttributeError):
             log.debug("Didn't find the port for container %s (%s), trying the kubernetes way." %
-                      (c_id, container_inspect.get('Config', {}).get('Image', '')))
+                      (c_id[:12], container_inspect.get('Config', {}).get('Image', '')))
             # kubernetes case
             # first we try to get it from the docker API
             # it works if the image has an EXPOSE instruction
@@ -152,7 +152,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
 
             if pod_metadata is None:
                 log.warning("Failed to fetch pod metadata for container %s."
-                            " Kubernetes tags may be missing." % c_inspect.get('Id'))
+                            " Kubernetes tags may be missing." % c_inspect.get('Id', '')[:12])
                 return []
             # get labels
             kube_labels = pod_metadata.get('labels', {})
@@ -216,7 +216,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
                         configs[check_name][1].append(conf[2])
             except Exception:
                 log.exception('Building config for container %s based on image %s using service'
-                              ' discovery failed, leaving it alone.' % (cid, image))
+                              ' discovery failed, leaving it alone.' % (cid[:12], image))
         log.debug('check configs: %s' % configs)
         return configs
 
@@ -226,7 +226,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         template_config = self._get_template_config(image)
         if template_config is None:
             log.debug('Template config is None, container %s with image %s '
-                      'will be left unconfigured.' % (c_id, image))
+                      'will be left unconfigured.' % (c_id[:12], image))
             return None
 
         check_name, init_config_tpl, instance_tpl, variables = template_config
