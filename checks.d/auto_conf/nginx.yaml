@@ -1,7 +1,0 @@
-docker_images:
-  - nginx
-
-init_config:
-
-instances:
-  - nginx_status_url: "http://%%host%%/nginx_status/"
