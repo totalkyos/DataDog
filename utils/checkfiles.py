@@ -16,7 +16,7 @@ def get_conf_path(check_name):
     try:
         confd_path = get_confd_path()
     except PathNotFound:
-        log.error("Couldn't find the check configuration folder, not using the docker hostname.")
+        log.error("Couldn't find the check configuration folder, this shouldn't happen.")
         return None
 
     conf_path = os.path.join(confd_path, '%s.yaml' % check_name)

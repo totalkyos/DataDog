@@ -10,8 +10,7 @@ from collections import defaultdict, Counter, deque
 # project
 from checks import AgentCheck
 from config import _is_affirmative
-from utils.dockerutil import find_cgroup, find_cgroup_filename_pattern, get_client, MountException, \
-    set_docker_settings, image_tag_extractor, container_name_extractor
+from utils.dockerutil import DockerUtil, MountException
 from utils.kubeutil import get_kube_labels
 from utils.platform import Platform
 
@@ -22,8 +21,6 @@ SIZE_REFRESH_RATE = 5  # Collect container sizes every 5 iterations of the check
 MAX_CGROUP_LISTING_RETRIES = 3
 CONTAINER_ID_RE = re.compile('[0-9a-f]{64}')
 POD_NAME_LABEL = "io.kubernetes.pod.name"
-
-CONFIG_RELOAD_STATUS = ['start', 'die', 'stop', 'kill']  # used to trigger service discovery
 
 GAUGE = AgentCheck.gauge
 RATE = AgentCheck.rate
@@ -91,10 +88,10 @@ DEFAULT_IMAGE_TAGS = [
 
 TAG_EXTRACTORS = {
     "docker_image": lambda c: [c["Image"]],
-    "image_name": lambda c: image_tag_extractor(c, 0),
-    "image_tag": lambda c: image_tag_extractor(c, 1),
+    "image_name": lambda c: DockerUtil.image_tag_extractor(c, 0),
+    "image_tag": lambda c: DockerUtil.image_tag_extractor(c, 1),
     "container_command": lambda c: [c["Command"]],
-    "container_name": container_name_extractor,
+    "container_name": DockerUtil.container_name_extractor,
 }
 
 CONTAINER = "container"
@@ -103,11 +100,7 @@ FILTERED = "filtered"
 IMAGE = "image"
 
 
-def get_mountpoints(docker_root):
-    mountpoints = {}
-    for metric in CGROUP_METRICS:
-        mountpoints[metric["cgroup"]] = find_cgroup(metric["cgroup"], docker_root)
-    return mountpoints
+
 
 
 def get_filters(include, exclude):
@@ -151,14 +144,12 @@ class DockerDaemon(AgentCheck):
 
     def init(self):
         try:
+            instance = self.instances[0]
+
             # We configure the check with the right cgroup settings for this host
             # Just needs to be done once
-            instance = self.instances[0]
-            set_docker_settings(self.init_config, instance)
-
-            self.client = get_client()
-            self._docker_root = self.init_config.get('docker_root', '/')
-            self._mountpoints = get_mountpoints(self._docker_root)
+            self.docker_util = DockerUtil()
+            self._mountpoints = self.docker_util.get_mountpoints(CGROUP_METRICS)
             self.cgroup_listing_retries = 0
             self._latest_size_query = 0
             self._filtered_containers = set()
@@ -291,7 +282,7 @@ class DockerDaemon(AgentCheck):
         containers_by_id = {}
 
         for container in containers:
-            container_name = container_name_extractor(container)[0]
+            container_name = DockerUtil.container_name_extractor(container)[0]
 
             container_status_tags = self._get_tags(container, CONTAINER)
 
@@ -424,7 +415,7 @@ class DockerDaemon(AgentCheck):
         for container in containers:
             container_tags = self._get_tags(container, FILTERED)
             if self._are_tags_filtered(container_tags):
-                container_name = container_name_extractor(container)[0]
+                container_name = DockerUtil.container_name_extractor(container)[0]
                 self._filtered_containers.add(container_name)
                 self.log.debug("Container {0} is filtered".format(container["Names"][0]))
 
@@ -448,7 +439,7 @@ class DockerDaemon(AgentCheck):
 
         Requires _filter_containers to run first.
         """
-        container_name = container_name_extractor(container)[0]
+        container_name = DockerUtil.container_name_extractor(container)[0]
         return container_name in self._filtered_containers
 
     def _report_container_size(self, containers_by_id):
@@ -487,7 +478,7 @@ class DockerDaemon(AgentCheck):
             tags = self._get_tags(container, PERFORMANCE)
             self._report_cgroup_metrics(container, tags)
             if "_proc_root" not in container:
-                containers_without_proc_root.append(container_name_extractor(container)[0])
+                containers_without_proc_root.append(DockerUtil.container_name_extractor(container)[0])
                 continue
             self._report_net_metrics(container, tags)
 
@@ -584,18 +575,8 @@ class DockerDaemon(AgentCheck):
     def _get_events(self):
         """Get the list of events."""
         now = int(time.time())
-        should_reload_conf = False
-        events = []
-        event_generator = self.client.events(since=self._last_event_collection_ts,
-            until=now, decode=True)
-        for event in event_generator:
-            if event != '':
-                events.append(event)
-            if event.get('status') in CONFIG_RELOAD_STATUS:
-                should_reload_conf = True
+        events = self.docker_util.get_events(self._last_event_collection_ts, now)
         self._last_event_collection_ts = now
-        if should_reload_conf and self._service_discovery:
-            self.agentConfig['reload_check_configs'] = True
         return events
 
     def _pre_aggregate_events(self, api_events, containers_by_id):
@@ -626,7 +607,7 @@ class DockerDaemon(AgentCheck):
                 container_name = event['id'][:11]
                 if event['id'] in containers_by_id:
                     cont = containers_by_id[event['id']]
-                    container_name = container_name_extractor(cont)[0]
+                    container_name = DockerUtil.container_name_extractor(cont)[0]
                     container_tags.update(self._get_tags(cont, PERFORMANCE))
                     container_tags.add('container_name:%s' % container_name)
 
@@ -669,7 +650,7 @@ class DockerDaemon(AgentCheck):
             "file": filename,
         }
 
-        return find_cgroup_filename_pattern(self._mountpoints, container_id) % (params)
+        return DockerUtil.find_cgroup_filename_pattern(self._mountpoints, container_id) % (params)
 
     def _parse_cgroup_file(self, stat_file):
         """Parse a cgroup pseudo file for key/values."""

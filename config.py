@@ -715,9 +715,9 @@ def get_checksd_path(osname=None):
         return _unix_checksd_path()
 
 
-def get_auto_confd_path():
+def get_auto_confd_path(osname=None):
     """Used for service discovery which only works for Unix"""
-    return os.path.join(_unix_checksd_path(), AUTO_CONFIG_DIR)
+    return os.path.join(get_confd_path(osname), AUTO_CONFIG_DIR)
 
 
 def get_win32service_file(osname, filename):

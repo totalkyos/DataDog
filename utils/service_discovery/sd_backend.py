@@ -8,7 +8,7 @@ import simplejson as json
 # project
 from config import check_yaml
 from utils.checkfiles import get_conf_path
-from utils.service_discovery.config_stores import ConfigStore
+from utils.service_discovery.config_stores import get_config_store
 from utils.dockerutil import get_client as get_docker_client
 from utils.kubeutil import _get_default_router, DEFAULT_KUBELET_PORT
 
@@ -74,13 +74,12 @@ class SDDockerBackend(ServiceDiscoveryBackend):
         self.docker_client = get_docker_client()
 
         try:
-            self.config_store = ConfigStore(agentConfig=agentConfig)
+            self.config_store = get_config_store(agentConfig=agentConfig)
         except Exception as e:
             log.error('Failed to instantiate the config store client. '
                       'Auto-config only will be used. %s' % str(e))
             agentConfig['sd_config_backend'] = None
-            ConfigStore._drop()
-            self.config_store = ConfigStore(agentConfig=agentConfig)
+            self.config_store = get_config_store(agentConfig=agentConfig)
 
         self.VAR_MAPPING = {
             'host': self._get_host,

@@ -5,7 +5,7 @@ import mock
 import unittest
 
 # project
-from utils.service_discovery.config_stores import ConfigStore
+from utils.service_discovery.config_stores import get_config_store
 from utils.service_discovery.consul_config_store import ConsulStore
 from utils.service_discovery.etcd_config_store import EtcdStore
 from utils.service_discovery.sd_backend import ServiceDiscoveryBackend, SDDockerBackend
@@ -200,7 +200,8 @@ class TestServiceDiscovery(unittest.TestCase):
             'consul': ('consul', '{}', '{"url": "http://%%host%%:%%port%%", "catalog_checks": true, "service_whitelist": null, "new_leader_checks": true}'),
             'foobar': None
         }
-        config_store = ConfigStore(self.auto_conf_agentConfig)
+
+        config_store = get_config_store(self.auto_conf_agentConfig)
         for image in expected_tpl.keys():
             config = config_store._get_auto_config(image)
             self.assertEquals(config, expected_tpl.get(image))
@@ -210,7 +211,7 @@ class TestServiceDiscovery(unittest.TestCase):
         """Test get_check_tpl"""
         valid_config = ['image_0', 'image_1', 'image_2']
         invalid_config = ['bad_image_0', 'bad_image_1']
-        config_store = ConfigStore(self.auto_conf_agentConfig)
+        config_store = get_config_store(self.auto_conf_agentConfig)
         for image in valid_config:
             tpl = self.mock_templates.get(image)[0]
             self.assertEquals(tpl[0], config_store.get_check_tpl(image)[0])

@@ -44,7 +44,7 @@ from utils.jmx import jmx_command
 from utils.pidfile import PidFile
 from utils.profile import AgentProfiler
 from utils.service_discovery.configcheck import sd_configcheck
-from utils.service_discovery.config_stores import ConfigStore
+from utils.service_discovery.config_stores import get_config_store
 
 # Constants
 PID_NAME = "dd-agent"
@@ -190,7 +190,7 @@ class Agent(Daemon):
             if self._agentConfig.get('service_discovery') is True and \
                self._agentConfig.get('reload_check_configs') is False:
                 try:
-                    self._agentConfig['reload_check_configs'] = ConfigStore(self._agentConfig).crawl_config_template()
+                    self._agentConfig['reload_check_configs'] = get_config_store(self._agentConfig).crawl_config_template()
                 except Exception as e:
                     log.warn('Something went wrong while looking for config template changes: %s' % str(e))
 
