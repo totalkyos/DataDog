@@ -194,7 +194,10 @@ class SDDockerBackend(ServiceDiscoveryBackend):
 
     def get_configs(self):
         """Get the config for all docker containers running on the host."""
-        containers = [(container.get('Image').split(':')[0].split('/')[-1], container.get('Id'), container.get('Labels')) for container in self.docker_client.containers()]
+        containers = [(
+            container.get('Image').split(':')[0].split('/')[-1],
+            container.get('Id'), container.get('Labels')
+            ) for container in self.docker_client.containers()]
         configs = {}
         # used by the configcheck agent command to trace where check configs come from
         trace_config = self.agentConfig.get('trace_config', False)
