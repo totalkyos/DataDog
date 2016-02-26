@@ -57,13 +57,9 @@ class ServiceDiscoveryBackend(object):
                         else:
                             tpl[key] = tpl[key].replace(var, variables[var.strip('%')])
                     else:
-                        log.warning('Failed to find interpolate variable {0} for the {1} parameter.'
-                                    ' The check might not be configured properly.'.format(var, key))
-                        if isinstance(tpl[key], list):
-                            for idx, val in enumerate(tpl[key]):
-                                tpl[key][idx] = val.replace(var, '')
-                        else:
-                            tpl[key].replace(var, '')
+                        log.warning('Failed to interpolate variable {0} for the {1} parameter.'
+                                    ' Dropping this configuration.'.format(var, key))
+                        return None
         return config
 
     @classmethod
@@ -260,8 +256,10 @@ class SDDockerBackend(ServiceDiscoveryBackend):
             if var_parts[0] in self.VAR_MAPPING:
                 try:
                     res = self.VAR_MAPPING[var_parts[0]](inspect)
+                    if not res:
+                        raise ValueError("Invalid value for variable %s." % var_parts[0])
                     # if an index is found in the variable, use it to select a value
-                    if len(var_parts) > 1 and isinstance(res, list) and int(var_parts[-1]) <= len(res):
+                    if len(var_parts) > 1 and isinstance(res, list) and int(var_parts[-1]) < len(res):
                         var_values[v] = res[int(var_parts[-1])]
                     # if no valid index was found but we have a list, return the last element
                     elif isinstance(res, list):
@@ -272,7 +270,13 @@ class SDDockerBackend(ServiceDiscoveryBackend):
                     log.error("Could not find a value for the template variable %s: %s" % (v, str(ex)))
             else:
                 log.error("No method was found to interpolate template variable %s." % v)
-        init_config, instances = self._render_template(init_config_tpl or {}, instance_tpl or {}, var_values)
+
+        tpl = self._render_template(init_config_tpl or {}, instance_tpl or {}, var_values)
+        if tpl:
+            init_config, instances = self._render_template(
+                init_config_tpl or {}, instance_tpl or {}, var_values)
+        else:
+            return None
 
         if trace_config:
             return (source, (check_name, init_config, instances))
