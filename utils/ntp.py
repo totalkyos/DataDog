@@ -6,11 +6,12 @@ import random
 from config import check_yaml, get_confd_path
 from utils.singleton import Singleton
 
+
 class NTPUtil():
     __metaclass__ = Singleton
 
     DEFAULT_VERSION = 3
-    DEFAULT_TIMEOUT = 1 # in seconds
+    DEFAULT_TIMEOUT = 1  # in seconds
     DEFAULT_PORT = "ntp"
 
     def __init__(self):
@@ -31,4 +32,3 @@ class NTPUtil():
             'version': self.version,
             'timeout': self.timeout,
         }
-    

@@ -10,6 +10,7 @@ from docker import tls
 from utils.checkfiles import get_conf_path
 from utils.singleton import Singleton
 
+
 class MountException(Exception):
     pass
 
@@ -20,6 +21,7 @@ CHECK_NAME = 'docker_daemon'
 CONFIG_RELOAD_STATUS = ['start', 'die', 'stop', 'kill']  # used to trigger service discovery
 
 log = logging.getLogger(__name__)
+
 
 class DockerUtil():
     __metaclass__ = Singleton
@@ -83,7 +85,7 @@ class DockerUtil():
     def get_events(self, since, until):
         self.events = []
         event_generator = self.client.events(since=since,
-            until=until, decode=True)
+                                             until=until, decode=True)
         for event in event_generator:
             if event != '':
                 self.events.append(event)
@@ -142,7 +144,6 @@ class DockerUtil():
             if candidate is not None:
                 return os.path.join(self._docker_root, candidate)
             raise Exception("Can't find mounted %s cgroups." % hierarchy)
-
 
     @classmethod
     def find_cgroup_filename_pattern(cls, mountpoints, container_id):

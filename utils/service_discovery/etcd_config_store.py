@@ -2,7 +2,7 @@ from urllib3.exceptions import TimeoutError
 
 from etcd import EtcdKeyNotFound
 from etcd import Client as etcd_client
-from utils.service_discovery.config_stores import ConfigStore, KeyNotFound
+from utils.service_discovery.abstract_config_store import AbstractConfigStore, KeyNotFound
 
 DEFAULT_ETCD_HOST = '127.0.0.1'
 DEFAULT_ETCD_PORT = 4001
@@ -11,7 +11,7 @@ DEFAULT_RECO = True
 DEFAULT_TIMEOUT = 5
 
 
-class EtcdStore(ConfigStore):
+class EtcdStore(AbstractConfigStore):
     """Implementation of a config store client for etcd"""
     def _extract_settings(self, config):
         """Extract settings from a config object"""

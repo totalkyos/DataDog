@@ -1,4 +1,5 @@
-
+# std
+import ntplib
 
 # project
 from checks import AgentCheck

@@ -1,6 +1,6 @@
 # project
 from consul import Consul
-from utils.service_discovery.config_stores import ConfigStore, KeyNotFound
+from utils.service_discovery.abstract_config_store import AbstractConfigStore, KeyNotFound
 
 
 DEFAULT_CONSUL_HOST = '127.0.0.1'
@@ -12,7 +12,7 @@ DEFAULT_CONSUL_DATACENTER = None
 DEFAULT_CONSUL_VERIFY = True
 
 
-class ConsulStore(ConfigStore):
+class ConsulStore(AbstractConfigStore):
     """Implementation of a config store client for consul"""
     def _extract_settings(self, config):
         """Extract settings from a config object"""

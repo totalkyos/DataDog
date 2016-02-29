@@ -9,11 +9,10 @@ import simplejson as json
 from config import check_yaml
 from utils.checkfiles import get_conf_path
 from utils.service_discovery.config_stores import get_config_store
-from utils.dockerutil import get_client as get_docker_client
+from utils.dockerutil import DockerUtil
 from utils.kubeutil import _get_default_router, DEFAULT_KUBELET_PORT
 
 log = logging.getLogger(__name__)
-
 
 KUBERNETES_CHECK_NAME = 'kubernetes'
 
@@ -71,7 +70,7 @@ class SDDockerBackend(ServiceDiscoveryBackend):
     """Docker-based service discovery"""
 
     def __init__(self, agentConfig):
-        self.docker_client = get_docker_client()
+        self.docker_client = DockerUtil().client
 
         try:
             self.config_store = get_config_store(agentConfig=agentConfig)

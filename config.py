@@ -29,7 +29,7 @@ from utils.subprocess_output import (
     get_subprocess_output,
     SubprocessOutputEmptyError,
 )
-from utils.service_discovery.config_stores import ConfigStore
+from utils.service_discovery.abstract_config_store import AbstractConfigStore
 
 
 # CONSTANTS
@@ -427,7 +427,7 @@ def get_config(parse_args=True, cfg_path=None, options=None):
                 conf_backend = None
             agentConfig['sd_config_backend'] = conf_backend
 
-            additional_config = ConfigStore.extract_sd_config(config)
+            additional_config = AbstractConfigStore.extract_sd_config(config)
             agentConfig.update(additional_config)
 
         # Concerns only Windows

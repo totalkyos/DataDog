@@ -100,9 +100,6 @@ FILTERED = "filtered"
 IMAGE = "image"
 
 
-
-
-
 def get_filters(include, exclude):
     # The reasoning is to check exclude first, so we can skip if there is no exclude
     if not exclude:
@@ -149,6 +146,7 @@ class DockerDaemon(AgentCheck):
             # We configure the check with the right cgroup settings for this host
             # Just needs to be done once
             self.docker_util = DockerUtil()
+            self.docker_client = self.docker_util.client
             self._mountpoints = self.docker_util.get_mountpoints(CGROUP_METRICS)
             self.cgroup_listing_retries = 0
             self._latest_size_query = 0
@@ -184,7 +182,6 @@ class DockerDaemon(AgentCheck):
                 exclude = instance.get("exclude", [])
                 self._exclude_patterns, self._include_patterns, _filtered_tag_names = get_filters(include, exclude)
                 self.tag_names[FILTERED] = _filtered_tag_names
-
 
             # Other options
             self.collect_image_stats = _is_affirmative(instance.get('collect_images_stats', False))
@@ -242,9 +239,9 @@ class DockerDaemon(AgentCheck):
     def _count_and_weigh_images(self):
         try:
             tags = self._get_tags()
-            active_images = self.client.images(all=False)
+            active_images = self.docker_client.images(all=False)
             active_images_len = len(active_images)
-            all_images_len = len(self.client.images(quiet=True, all=True))
+            all_images_len = len(self.docker_client.images(quiet=True, all=True))
             self.gauge("docker.images.available", active_images_len, tags=tags)
             self.gauge("docker.images.intermediate", (all_images_len - active_images_len), tags=tags)
 
@@ -266,7 +263,7 @@ class DockerDaemon(AgentCheck):
         all_containers_count = Counter()
 
         try:
-            containers = self.client.containers(all=True, size=must_query_size)
+            containers = self.docker_client.containers(all=True, size=must_query_size)
         except Exception, e:
             message = "Unable to list Docker containers: {0}".format(e)
             self.service_check(SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
@@ -372,7 +369,6 @@ class DockerDaemon(AgentCheck):
                 if kube_tags:
                     tags.extend(list(kube_tags))
 
-
         return tags
 
     def _extract_tag_value(self, entity, tag_name):
@@ -393,7 +389,7 @@ class DockerDaemon(AgentCheck):
         return entity["_tag_values"][tag_name]
 
     def refresh_ecs_tags(self):
-        ecs_config = self.client.inspect_container('ecs-agent')
+        ecs_config = self.docker_client.inspect_container('ecs-agent')
         ip = ecs_config.get('NetworkSettings', {}).get('IPAddress')
         ports = ecs_config.get('NetworkSettings', {}).get('Ports')
         port = ports.keys()[0].split('/')[0] if ports else None
@@ -490,7 +486,6 @@ class DockerDaemon(AgentCheck):
             else:
                 # On kubernetes, this is kind of expected. Network metrics will be collected by the kubernetes integration anyway
                 self.log.debug(message)
-
 
     def _report_cgroup_metrics(self, container, tags):
         try:
@@ -681,7 +676,7 @@ class DockerDaemon(AgentCheck):
     # proc files
     def _crawl_container_pids(self, container_dict):
         """Crawl `/proc` to find container PIDs and add them to `containers_by_id`."""
-        proc_path = os.path.join(self._docker_root, 'proc')
+        proc_path = os.path.join(self.docker_util._docker_root, 'proc')
         pid_dirs = [_dir for _dir in os.listdir(proc_path) if _dir.isdigit()]
 
         if len(pid_dirs) == 0:
