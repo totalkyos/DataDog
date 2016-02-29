@@ -205,4 +205,4 @@ class DockerUtil():
                 # the leading "/" is legit, if there's another one it means the name is actually an alias
                 if name.count('/') <= 1:
                     return [str(name).lstrip('/')]
-        return co.get('Id')[:11]
+        return [co.get('Id')[:12]]
