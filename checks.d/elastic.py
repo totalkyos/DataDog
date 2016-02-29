@@ -433,8 +433,8 @@ class ESCheck(AgentCheck):
             )
             resp.raise_for_status()
         except Exception as e:
-            self.log.debug("Problem getting data from %s (Error %s) -> %s", \
-                           resp.url, resp.status_code, e)
+            self.log.debug("Problem getting data from %s (Error %s)",
+                           resp.url, resp.status_code)
             if send_sc:
                 self.service_check(
                     self.SERVICE_CHECK_CONNECT_NAME,
