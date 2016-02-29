@@ -49,3 +49,26 @@ class EtcdStore(AbstractConfigStore):
             raise KeyNotFound("The key %s was not found in etcd" % path)
         except TimeoutError, e:
             raise e
+
+    def dump_directory(self, path, **kwargs):
+        """Return a dict made of all image names and their corresponding check info"""
+        templates = {}
+        try:
+            directory = self.client.read(
+                path,
+                recursive=True,
+                timeout=kwargs.get('timeout', DEFAULT_TIMEOUT),
+            )
+        except EtcdKeyNotFound:
+            raise KeyNotFound("The key %s was not found in etcd" % path)
+        except TimeoutError, e:
+            raise e
+        for leaf in directory.leaves:
+            image = leaf.key.split('/')[-2]
+            param = leaf.key.split('/')[-1]
+            value = leaf.value
+            if image not in templates:
+                templates[image] = {}
+            templates[image][param] = value
+
+        return templates

@@ -38,7 +38,7 @@ class AbstractConfigStore(object):
     @classmethod
     def _drop(cls):
         """Drop the config store instance"""
-        cls._instance = None
+        del cls._instances[cls]
 
     def _extract_settings(self, config):
         raise NotImplementedError()
@@ -47,6 +47,9 @@ class AbstractConfigStore(object):
         raise NotImplementedError()
 
     def client_read(self, path, **kwargs):
+        raise NotImplementedError()
+
+    def dump_directory(self, path, **kwargs):
         raise NotImplementedError()
 
     def _get_auto_config(self, image_name):

@@ -42,11 +42,33 @@ class ConsulStore(AbstractConfigStore):
 
     def client_read(self, path, **kwargs):
         """Retrieve a value from a consul key."""
-        res = self.client.kv.get(path)
+        recurse = kwargs.get('recursive', False)
+        res = self.client.kv.get(path, recurse=recurse)
         if kwargs.get('watch', False) is True:
             return res[0]
         else:
             if res[1] is not None:
-                return res[1].get('Value', recurse=kwargs.get('recursive', False))
+                return res[1].get('Value') if not recurse else res[1]
             else:
                 raise KeyNotFound("The key %s was not found in consul" % path)
+
+    def dump_directory(self, path, **kwargs):
+        """Return a dict made of all image names and their corresponding check info"""
+        templates = {}
+        path = path.lstrip('/')
+        try:
+            directory = self.client_read(
+                path,
+                recursive=True,
+            )
+        except KeyNotFound:
+            raise KeyNotFound("The key %s was not found in consul" % path)
+        for leaf in directory:
+            image = leaf.get('Key').split('/')[-2]
+            param = leaf.get('Key').split('/')[-1]
+            value = leaf.get('Value')
+            if image not in templates:
+                templates[image] = {}
+            templates[image][param] = value
+
+        return templates

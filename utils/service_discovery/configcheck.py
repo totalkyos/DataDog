@@ -1,6 +1,7 @@
-from config import load_check_directory
+from config import load_check_directory, SD_CONFIG_BACKENDS
 from util import get_hostname
 from utils.dockerutil import DockerUtil
+from utils.service_discovery.config_stores import get_config_store
 
 
 def sd_configcheck(agentConfig):
@@ -21,6 +22,11 @@ def sd_configcheck(agentConfig):
     except Exception:
         print("Failed to collect containers info.")
 
+    try:
+        print_templates(agentConfig)
+    except Exception:
+        print("Failed to collect configuration templates.")
+
 
 def print_containers():
     containers = DockerUtil().client.containers()
@@ -31,6 +37,26 @@ def print_containers():
         c_image = 'image: %s' % co.get('Image')
         c_name = 'name: %s' % DockerUtil.container_name_extractor(co)[0]
         print("\t- %s %s %s" % (c_id, c_image, c_name))
+    print('\n')
 
 
-# def print_templates(agemtConfig):
+def print_templates(agentConfig):
+    if agentConfig.get('sd_config_backend') in SD_CONFIG_BACKENDS:
+        print("Configuration templates:\n")
+        templates = {}
+        sd_template_dir = agentConfig.get('sd_template_dir')
+        config_store = get_config_store(agentConfig)
+        try:
+            templates = config_store.dump_directory(sd_template_dir)
+        except Exception as ex:
+            print("Failed to extract configuration templates from the backend:\n%s" % str(ex))
+
+        for img, tpl in templates.iteritems():
+            print(
+                "- Image %s:\n\tcheck name: %s\n\tinit_config: %s\n\tinstance: %s" % (
+                    img,
+                    tpl.get('check_name'),
+                    tpl.get('init_config'),
+                    tpl.get('instance'),
+                )
+            )
