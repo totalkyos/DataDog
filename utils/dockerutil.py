@@ -30,7 +30,6 @@ class DockerUtil():
 
     def __init__(self):
         self._docker_root = None
-        self.should_reload_conf = False
 
         # Read the config from docker_daemon.yaml
         from config import check_yaml
@@ -84,15 +83,16 @@ class DockerUtil():
 
     def get_events(self, since, until):
         self.events = []
+        should_reload_conf = False
+
         event_generator = self.client.events(since=since,
                                              until=until, decode=True)
         for event in event_generator:
             if event != '':
                 self.events.append(event)
             if event.get('status') in CONFIG_RELOAD_STATUS:
-                self.should_reload_conf = True
-
-        return self.events
+                should_reload_conf = True
+        return (self.events, should_reload_conf)
 
     def get_hostname(self):
         """Return the `Name` param from `docker info` to use as the hostname"""
