@@ -8,6 +8,7 @@ import pysnmp.proto.rfc1902 as snmp_type
 from pysnmp.smi import builder
 from pysnmp.smi.exval import noSuchInstance, noSuchObject
 from pysnmp.error import PySnmpError
+from datadog import statsd
 
 # project
 from checks.network_checks import NetworkCheck, Status
@@ -281,6 +282,7 @@ class SnmpCheck(NetworkCheck):
         self.log.debug("Raw results: {0}".format(results))
         return results
 
+    @statsd.timed('snmp.exec.time', tags=["go"])
     def _check(self, instance):
         '''
         Perform two series of SNMP requests, one for all that have MIB asociated
