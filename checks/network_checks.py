@@ -220,10 +220,12 @@ class NetworkCheck(AgentCheck):
     def _clean_job(self, instance_key):
         # The job is finished here, this instance can be re processed
         if instance_key in self.jobs_status:
+            self.log.debug("Instance: %s cleaned from jobs status." % instance_key)
             del self.jobs_status[instance_key]
 
         # if an exception happened, log it
         if instance_key in self.jobs_results:
+            self.log.debug("Instance: %s cleaned from jobs results." % instance_key)
             ret = self.jobs_results[instance_key].get()
             if isinstance(ret, Exception):
                 self.log.exception("Exception in worker thread: {0}".format(ret))
