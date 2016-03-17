@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from itertools import izip
 import pywintypes
+import gc
 
 # 3p
 from win32com.client import Dispatch
@@ -265,6 +266,10 @@ class WMISampler(object):
 
         Release, i.e. mark as available at exit.
         """
+        self.logger.info(u"Garbage=%s, Objects=%s", len(gc.garbage), len(gc.get_objects()))
+        gc.collect()
+        self.logger.info(u"Garbage=%s, Objects=%s", len(gc.garbage), len(gc.get_objects()))
+
         self.logger.debug(
             u"Connecting to WMI server "
             u"(host={host}, namespace={namespace}, username={username}).".format(
