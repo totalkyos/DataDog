@@ -291,6 +291,7 @@ class WMISampler(object):
         Return an existing, available WMI connection or create a new one.
         Release, i.e. mark as available at exit.
         """
+        pythoncom.CoInitialize()
         connection = None
 
         # Fetch an existing connection or create a new one
@@ -438,7 +439,6 @@ class WMISampler(object):
                 query_flags |= flag_use_amended_qualifiers
 
             with self.get_connection() as connection:
-                pythoncom.CoInitialize()
                 raw_results = connection.ExecQuery(wql, "WQL", query_flags)
 
             results = self._parse_results(raw_results, includes_qualifiers=includes_qualifiers)
