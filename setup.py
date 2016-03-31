@@ -51,7 +51,7 @@ if sys.platform == 'win32':
                 install_requires.append(line)
 
     # windows-specific deps
-    install_requires.append('pywin32==217')
+    install_requires.append('pywin32==219')
 
     # Modules to force-include in the exe
     include_modules = [
