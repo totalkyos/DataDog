@@ -362,8 +362,8 @@ class Server(object):
                     raise
             except (KeyboardInterrupt, SystemExit):
                 break
-            except Exception:
-                log.exception('Error receiving datagram')
+            except Exception as e:
+                log.exception('Error receiving datagram %s', e)
 
     def stop(self):
         self.running = False
