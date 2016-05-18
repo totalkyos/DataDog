@@ -10,9 +10,11 @@ import socket
 import sys
 import time
 
+
 # 3p
 import simplejson as json
 from meliae import scanner
+import tempfile
 
 # project
 from checks import AGENT_METRICS_CHECK_NAME, AgentCheck, create_service_check
@@ -548,7 +550,9 @@ class Collector(object):
 
         # Debugging
         if self.count_run % 500 == 0:
-            filename = "dump_%s.json" % self.count_run
+            path = tempfile.gettempdir()
+            filename = "%s/dump_%s.json" % (path, self.count_run)
+            log.info(u"Writing memory dump to '%s'", filename)
             scanner.dump_all_objects(filename)
 
         self.count_run += 1
