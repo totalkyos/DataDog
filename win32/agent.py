@@ -208,6 +208,7 @@ class DDAgent(multiprocessing.Process):
 
     def run(self):
         from config import initialize_logging
+        from meliae import scanner
         initialize_logging('windows_collector')
         log.debug("Windows Service - Starting collector")
         set_win32_requests_ca_bundle_path()
@@ -227,6 +228,7 @@ class DDAgent(multiprocessing.Process):
         checksd = load_check_directory(self.config, self.hostname)
 
         # Main agent loop will run until interrupted
+        count_run = 0
         while self.running:
             if self._heartbeat:
                 self._heartbeat.send(0)
@@ -252,7 +254,13 @@ class DDAgent(multiprocessing.Process):
                 else:
                     collector_profiled_runs += 1
 
-            time.sleep(self.config['check_freq'])
+            if count_run % 500 == 0:
+                filename = "meliae/dump_%s.json" % count_run
+                scanner.dump_all_objects(filename)
+
+            count_run += 1
+
+            time.sleep(0)
 
     def stop(self):
         log.debug("Windows Service - Stopping collector")
