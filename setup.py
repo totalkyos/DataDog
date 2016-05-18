@@ -98,6 +98,9 @@ if sys.platform == 'win32':
         'tornado.websocket',
         'tornado.web',
         'tornado.ioloop',
+
+        # debug
+        'meliae',
     ]
 
     class Target(object):

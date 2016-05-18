@@ -23,6 +23,9 @@ import time
 # For pickle & PID files, see issue 293
 os.umask(022)
 
+# 3p
+from meliae import scanner
+
 # project
 from checks.check_status import CollectorStatus
 from checks.collector import Collector
@@ -172,6 +175,9 @@ class Agent(Daemon):
         profiled = False
         collector_profiled_runs = 0
 
+        # Troubleshooting
+        count_run = 0
+
         # Run the main loop.
         while self.run_forever:
             log.debug("Found {num_checks} checks".format(num_checks=len(self._checksd['initialized_checks'])))
@@ -236,7 +242,14 @@ class Agent(Daemon):
                 if profiled:
                     collector_profiled_runs += 1
                 log.debug("Sleeping for {0} seconds".format(self.check_frequency))
-                time.sleep(self.check_frequency)
+
+                # Debugging
+                if count_run % 500 == 0:
+                    filename = "meliae/dump_%s.json" % count_run
+                    scanner.dump_all_objects(filename)
+
+                count_run += 1
+                time.sleep(0)
 
         # Now clean-up.
         try:
