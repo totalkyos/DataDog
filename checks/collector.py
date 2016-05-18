@@ -12,6 +12,7 @@ import time
 
 # 3p
 import simplejson as json
+from meliae import scanner
 
 # project
 from checks import AGENT_METRICS_CHECK_NAME, AgentCheck, create_service_check
@@ -170,6 +171,7 @@ class Collector(object):
     passing it along to the emitters, who send it to their final destination.
     """
     def __init__(self, agentConfig, emitters, systemStats, hostname):
+        self.count_run = 0
         self.emit_duration = None
         self.agentConfig = agentConfig
         self.hostname = hostname
@@ -543,6 +545,14 @@ class Collector(object):
         else:
             log.debug("Finished run #%s. Collection time: %ss. Emit time: %ss" %
                       (self.run_count, round(collect_duration, 2), round(self.emit_duration, 2)))
+
+
+        # Debugging
+        if self.count_run % 500 == 0:
+            filename = "meliae/dump_%s.json" % self.count_run
+            scanner.dump_all_objects(filename)
+
+        self.count_run += 1
 
         return payload
 

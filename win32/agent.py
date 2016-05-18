@@ -228,7 +228,6 @@ class DDAgent(multiprocessing.Process):
         checksd = load_check_directory(self.config, self.hostname)
 
         # Main agent loop will run until interrupted
-        count_run = 0
         while self.running:
             if self._heartbeat:
                 self._heartbeat.send(0)
@@ -253,12 +252,6 @@ class DDAgent(multiprocessing.Process):
                         log.warn("Cannot disable profiler: %s" % str(e))
                 else:
                     collector_profiled_runs += 1
-
-            if count_run % 500 == 0:
-                filename = "meliae/dump_%s.json" % count_run
-                scanner.dump_all_objects(filename)
-
-            count_run += 1
 
             time.sleep(0)
 
