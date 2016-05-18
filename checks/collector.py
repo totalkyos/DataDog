@@ -546,10 +546,9 @@ class Collector(object):
             log.debug("Finished run #%s. Collection time: %ss. Emit time: %ss" %
                       (self.run_count, round(collect_duration, 2), round(self.emit_duration, 2)))
 
-
         # Debugging
         if self.count_run % 500 == 0:
-            filename = "meliae/dump_%s.json" % self.count_run
+            filename = "dump_%s.json" % self.count_run
             scanner.dump_all_objects(filename)
 
         self.count_run += 1
