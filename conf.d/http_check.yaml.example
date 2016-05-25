@@ -7,6 +7,15 @@ instances:
     url: http://some.url.example.com
     timeout: 1
 
+    # The (optional) method parameter allows you to change the default HTTP method from get to post.
+    # If using the post method, you can then specify the data to send in the body of the request
+    # with the data parameter.
+    # method: post
+    # data:
+    #   key: value
+    #   tags:
+    #     - env: production
+
     # The (optional) content_match parameter will allow the check
     # to look for a particular string within the response. The check
     # will report as DOWN if the string is not found.
