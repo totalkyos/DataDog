@@ -137,6 +137,20 @@ CONFIG_HTTP_HEADERS = {
 
 FAKE_CERT = {'notAfter': 'Apr 12 12:00:00 2006 GMT'}
 
+CONFIG_POST_METHOD = {
+    'instances': [{
+        'name': 'post_method',
+        'url': 'http://httpbin.org/post',
+        'timeout': 1,
+        'method': 'post',
+        'data': {
+            'foo': 'bar',
+            'tags': [{
+                'baz': 'qux'}]
+                }
+            }]
+}
+
 
 @attr(requires='network')
 class HTTPCheckTest(AgentCheckTest):
