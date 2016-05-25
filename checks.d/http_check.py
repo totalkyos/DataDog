@@ -201,12 +201,12 @@ class HTTPCheck(NetworkCheck):
         ignore_ssl_warning = _is_affirmative(instance.get('ignore_ssl_warning', False))
         skip_proxy = _is_affirmative(instance.get('no_proxy', False))
 
-        return method, data, url, username, password, http_response_status_code, timeout, include_content,\
+        return url, username, password, method, data, http_response_status_code, timeout, include_content,\
             headers, response_time, content_match, tags, ssl, ssl_expire, instance_ca_certs,\
             weakcipher, ignore_ssl_warning, skip_proxy
 
     def _check(self, instance):
-        method, data, addr, username, password, http_response_status_code, timeout, include_content, headers,\
+        addr, username, password, method, data, http_response_status_code, timeout, include_content, headers,\
             response_time, content_match, tags, disable_ssl_validation,\
             ssl_expire, instance_ca_certs, weakcipher, ignore_ssl_warning, skip_proxy = self._load_conf(instance)
         start = time.time()
