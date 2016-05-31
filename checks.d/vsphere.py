@@ -566,8 +566,15 @@ class VSphereCheck(AgentCheck):
                         args=(i_key, 'compute_resource', resource, tags_copy, regexes)
                     )
 
+                # Folder pool
+                if isinstance(resource, vim.Folder):
+                    self.pool.apply_async(
+                        self._cache_morlist_raw_atomic,
+                        args=(i_key, 'folder', resource, tags_copy, regexes)
+                    )
+
         elif obj_type == 'folder':
-            pass
+            self.log.debug(u"Folder are supported!")
 
         elif obj_type == 'compute_resource':
             if obj.__class__ == vim.ClusterComputeResource:
