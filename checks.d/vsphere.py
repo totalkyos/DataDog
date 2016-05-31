@@ -541,6 +541,7 @@ class VSphereCheck(AgentCheck):
         if obj_type == 'rootFolder':
             for datacenter in obj.childEntity:
                 # Skip non-datacenter
+                self.log.debug(u"Datacenter dict: %s", datacenter.__dict__)
                 if not hasattr(datacenter, 'hostFolder'):
                     continue
                 self.pool.apply_async(
