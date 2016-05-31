@@ -554,6 +554,14 @@ class VSphereCheck(AgentCheck):
             self.log.debug(u"Object name: %s", obj.name)
             self.log.debug(u"obj.hostFolder.childEntity has %s childs.", len(obj.hostFolder.childEntity))
             self.log.debug(u"obj.datastoreFolder.childEntity has %s childs.", len(obj.datastoreFolder.childEntity))
+
+            # Explore datastores
+            datastore_list = obj.datastoreFolder.childEntity
+
+            for ds in datastore_list:
+                print ds.name
+
+
             # self.log.debug(u"obj.childEntity has %s childs.", len(obj.childEntity))
             for compute_resource in obj.hostFolder.childEntity:
                 # Skip non-compute resource
