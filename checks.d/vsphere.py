@@ -577,8 +577,8 @@ class VSphereCheck(AgentCheck):
                 self.log.debug(u"Has host? %s", hasattr(compute_resource, 'host'))
 
                 # New
-                self.log.debug(u"Has Folder? %s", hasattr(compute_resource, 'Folder'))
-                self.log.debug(u"Has ComputeResource? %s", hasattr(compute_resource, 'ComputeResource'))
+                self.log.debug(u"Has Folder? %s", hasattr(compute_resource, 'folder'))
+                self.log.debug(u"Has ComputeResource? %s", hasattr(compute_resource, 'computeResource'))
 
 
                 # Resource pool
