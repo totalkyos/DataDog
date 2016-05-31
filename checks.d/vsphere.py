@@ -557,6 +557,7 @@ class VSphereCheck(AgentCheck):
             # self.log.debug(u"obj.childEntity has %s childs.", len(obj.childEntity))
             for compute_resource in obj.hostFolder.childEntity:
                 # Skip non-compute resource
+                selg.log.debug(u"Resource name %s resource type %s", compute_resource.name, compute_resource.__class__)
                 self.log.debug(u"Has Childs? %s", hasattr(compute_resource, 'childEntity'))
 
                 # Resource pool
