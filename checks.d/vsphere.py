@@ -541,7 +541,6 @@ class VSphereCheck(AgentCheck):
         if obj_type == 'rootFolder':
             for datacenter in obj.childEntity:
                 # Skip non-datacenter
-                self.log.debug(u"Datacenter dict: %s", datacenter.__dict__)
                 if not hasattr(datacenter, 'hostFolder'):
                     continue
                 self.pool.apply_async(
@@ -554,7 +553,7 @@ class VSphereCheck(AgentCheck):
             tags_copy.append(dc_tag)
             self.log.debug(u"Object name: %s", obj.name)
             self.log.debug(u"obj.hostFolder.childEntity has %s childs.", len(obj.hostFolder.childEntity))
-            self.log.debug(u"obj.childEntity has %s childs.", len(obj.childEntity))
+            # self.log.debug(u"obj.childEntity has %s childs.", len(obj.childEntity))
             for compute_resource in obj.hostFolder.childEntity:
                 # Skip non-compute resource
                 self.log.debug(u"Child dict: %s", compute_resource.__dict__)
