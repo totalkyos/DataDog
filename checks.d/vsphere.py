@@ -552,33 +552,11 @@ class VSphereCheck(AgentCheck):
         elif obj_type == 'datacenter':
             dc_tag = "vsphere_datacenter:%s" % obj.name
             tags_copy.append(dc_tag)
-            self.log.debug(u"Object name: %s", obj.name)
-            self.log.debug(u"obj.hostFolder.childEntity has %s childs.", len(obj.hostFolder.childEntity))
-            # self.log.debug(u"obj.datastoreFolder.childEntity has %s childs.", len(obj.datastoreFolder.childEntity))
-
-            # # Explore datastores
-            # datastore_list = obj.datastoreFolder.childEntity
-
-            # for ds in datastore_list:
-            #     self.log.debug("datastore name %s", ds.name)
-
-            # Cluster
-            cluster_list = obj.hostFolder.childEntity
-            self.log.debug(u"Cluster name %s", cluster_list[0].name)
+            self.log.debug(u"Datacenter %s", obj.name)
 
             # self.log.debug(u"obj.childEntity has %s childs.", len(obj.childEntity))
             for compute_resource in obj.hostFolder.childEntity:
                 # Skip non-compute resource
-                self.log.debug(u"Child dict: %s", compute_resource.__dict__)
-                self.log.debug(u"Class %s", compute_resource.__class__)
-                self.log.debug(u"Child type %s", compute_resource.childType)
-                self.log.debug(u"Has folder? %s", hasattr(compute_resource, 'folder'))
-                self.log.debug(u"Has hostFolder? %s", hasattr(compute_resource, 'hostFolder'))
-                self.log.debug(u"Has host? %s", hasattr(compute_resource, 'host'))
-
-                # New
-                self.log.debug(u"Has Folder? %s", hasattr(compute_resource, 'folder'))
-                self.log.debug(u"Has ComputeResource? %s", hasattr(compute_resource, 'computeResource'))
                 self.log.debug(u"Has Childs? %s", hasattr(compute_resource, 'childEntity'))
 
                 # Resource pool
