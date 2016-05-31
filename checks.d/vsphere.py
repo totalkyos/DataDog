@@ -535,6 +535,7 @@ class VSphereCheck(AgentCheck):
         ### <TEST-INSTRUMENTATION>
         t = Timer()
         self.log.debug("job_atomic: Exploring MOR {0} (type={1})".format(obj, obj_type))
+        self.log.debug("Object class %s", obj.__class__)
         ### </TEST-INSTRUMENTATION>
         tags_copy = deepcopy(tags)
 
