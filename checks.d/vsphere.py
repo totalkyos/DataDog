@@ -551,8 +551,10 @@ class VSphereCheck(AgentCheck):
         elif obj_type == 'datacenter':
             dc_tag = "vsphere_datacenter:%s" % obj.name
             tags_copy.append(dc_tag)
+            self.log.debug(u"Datacenter has %s childs.", len(obj.hostFolder.childEntity))
             for compute_resource in obj.hostFolder.childEntity:
                 # Skip non-compute resource
+                self.log.debug(u"Child dict: %s", compute_resource.__dict__)
                 if not hasattr(compute_resource, 'host'):
                     continue
                 self.pool.apply_async(
