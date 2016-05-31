@@ -570,6 +570,7 @@ class VSphereCheck(AgentCheck):
                 # Skip non-compute resource
                 self.log.debug(u"Child dict: %s", compute_resource.__dict__)
                 self.log.debug(u"Has folder? %s", hasattr(compute_resource, 'folder'))
+                self.log.debug(u"Has hostFolder? %s", hasattr(compute_resource, 'hostFolder'))
                 if not hasattr(compute_resource, 'host'):
                     continue
                 self.pool.apply_async(
