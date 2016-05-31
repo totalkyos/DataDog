@@ -574,12 +574,16 @@ class VSphereCheck(AgentCheck):
                     )
 
         elif obj_type == 'folder':
-            self.log.debug(u"Folder are supported!")
+            folder_tag = "vsphere_folder:%s" & obj.name
+            tags_copy.append(folder_tag)
+
+            for resource in obj.childEntity:
+                self.debug(u"Folder resource class %s", resource.__class__)
 
         elif obj_type == 'compute_resource':
-            if obj.__class__ == vim.ClusterComputeResource:
-                cluster_tag = "vsphere_cluster:%s" % obj.name
-                tags_copy.append(cluster_tag)
+            cluster_tag = "vsphere_cluster:%s" % obj.name
+            tags_copy.append(cluster_tag)
+
             for host in obj.host:
                 # Skip non-host
                 if not hasattr(host, 'vm'):
