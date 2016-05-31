@@ -569,15 +569,12 @@ class VSphereCheck(AgentCheck):
             for compute_resource in obj.hostFolder.childEntity:
                 # Skip non-compute resource
                 self.log.debug(u"Child dict: %s", compute_resource.__dict__)
+                self.log.debug(u"Class %s", compute_resource.__class__)
                 self.log.debug(u"Has folder? %s", hasattr(compute_resource, 'folder'))
                 self.log.debug(u"Has hostFolder? %s", hasattr(compute_resource, 'hostFolder'))
                 self.log.debug(u"Has host? %s", hasattr(compute_resource, 'host'))
 
                 # Resource pool
-                resource_pool_obj = compute_resource.resourcePool
-                self.log.debug(u"Ressource pool: %s", resource_pool_obj)
-
-
                 if not hasattr(compute_resource, 'host'):
                     continue
                 self.pool.apply_async(
