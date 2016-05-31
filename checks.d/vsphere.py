@@ -554,19 +554,20 @@ class VSphereCheck(AgentCheck):
             tags_copy.append(dc_tag)
             self.log.debug(u"Datacenter %s", obj.name)
 
-            # self.log.debug(u"obj.childEntity has %s childs.", len(obj.childEntity))
-            for compute_resource in obj.hostFolder.childEntity:
+            for resource in obj.hostFolder.childEntity:
                 # Skip non-compute resource
-                self.log.debug(u"Resource name %s resource type %s", compute_resource.name, compute_resource.__class__)
-                self.log.debug(u"Has Childs? %s", hasattr(compute_resource, 'childEntity'))
+                self.log.debug(u"Resource name %s resource type %s", resource.name, resource.__class__)
+                self.log.debug(u"Has Childs? %s", hasattr(resource, 'childEntity'))
 
                 # Resource pool
-                if not hasattr(compute_resource, 'host'):
-                    continue
-                self.pool.apply_async(
-                    self._cache_morlist_raw_atomic,
-                    args=(i_key, 'compute_resource', compute_resource, tags_copy, regexes)
-                )
+                if isinstance(resource, vim.ClusterComputeResource):
+                    self.pool.apply_async(
+                        self._cache_morlist_raw_atomic,
+                        args=(i_key, 'compute_resource', resource, tags_copy, regexes)
+                    )
+
+        elif obj_type == 'folder':
+            pass
 
         elif obj_type == 'compute_resource':
             if obj.__class__ == vim.ClusterComputeResource:
