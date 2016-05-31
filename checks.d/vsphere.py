@@ -574,7 +574,7 @@ class VSphereCheck(AgentCheck):
                     )
 
         elif obj_type == 'folder':
-            folder_tag = "vsphere_folder:%s" & obj.name
+            folder_tag = "vsphere_folder:%s" % obj.name
             tags_copy.append(folder_tag)
 
             for resource in obj.childEntity:
