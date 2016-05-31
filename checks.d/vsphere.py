@@ -578,7 +578,7 @@ class VSphereCheck(AgentCheck):
             tags_copy.append(folder_tag)
 
             for resource in obj.childEntity:
-                self.debug(u"Folder resource class %s", resource.__class__)
+                self.log.debug(u"Folder resource class %s", resource.__class__)
 
         elif obj_type == 'compute_resource':
             cluster_tag = "vsphere_cluster:%s" % obj.name
