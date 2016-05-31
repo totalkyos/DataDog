@@ -553,13 +553,17 @@ class VSphereCheck(AgentCheck):
             tags_copy.append(dc_tag)
             self.log.debug(u"Object name: %s", obj.name)
             self.log.debug(u"obj.hostFolder.childEntity has %s childs.", len(obj.hostFolder.childEntity))
-            self.log.debug(u"obj.datastoreFolder.childEntity has %s childs.", len(obj.datastoreFolder.childEntity))
+            # self.log.debug(u"obj.datastoreFolder.childEntity has %s childs.", len(obj.datastoreFolder.childEntity))
 
-            # Explore datastores
-            datastore_list = obj.datastoreFolder.childEntity
+            # # Explore datastores
+            # datastore_list = obj.datastoreFolder.childEntity
 
-            for ds in datastore_list:
-                self.log.debug("datastore name %s", ds.name)
+            # for ds in datastore_list:
+            #     self.log.debug("datastore name %s", ds.name)
+
+            # Cluster
+            cluster_list = obj.hostFolder.childEntity
+            self.log.debug(u"Cluster name %s", cluster_list[0].name)
 
             # self.log.debug(u"obj.childEntity has %s childs.", len(obj.childEntity))
             for compute_resource in obj.hostFolder.childEntity:
