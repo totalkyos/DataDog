@@ -9,6 +9,7 @@ from urlparse import urljoin
 # project
 from checks import AgentCheck
 from util import get_hostname
+from utils.proxy import get_proxy
 
 # 3p
 import requests
@@ -369,18 +370,20 @@ class OpenStackCheck(AgentCheck):
         self.external_host_tags = {}
 
         # Set proxy settings
+
+        proxy_settings = get_proxy(agentConfig)
         self.proxies = {
             "http": None,
             "https": None,
         }
-        if self.proxy_settings:
+        if proxy_settings:
             uri = "{host}:{port}".format(
-                host=self.proxy_settings['host'],
-                port=self.proxy_settings['port'])
-            if self.proxy_settings['user'] and self.proxy_settings['password']:
+                host=proxy_settings['host'],
+                port=proxy_settings['port'])
+            if proxy_settings['user'] and proxy_settings['password']:
                 uri = "{user}:{password}@{uri}".format(
-                    user=self.proxy_settings['user'],
-                    password=self.proxy_settings['password'],
+                    user=proxy_settings['user'],
+                    password=proxy_settings['password'],
                     uri=uri)
             self.proxies['http'] = "http://{uri}".format(uri=uri)
             self.proxies['https'] = "https://{uri}".format(uri=uri)
