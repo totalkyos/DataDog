@@ -519,11 +519,6 @@ def get_config(parse_args=True, cfg_path=None, options=None):
             if config.has_option('Main', 'statsd_forward_port'):
                 agentConfig['statsd_forward_port'] = int(config.get('Main', 'statsd_forward_port'))
 
-        # optionally send dogstatsd data directly to the agent.
-        if config.has_option('Main', 'dogstatsd_use_ddurl'):
-            if _is_affirmative(config.get('Main', 'dogstatsd_use_ddurl')):
-                agentConfig['dogstatsd_target'] = agentConfig['dd_url']
-
         # Optional config
         # FIXME not the prettiest code ever...
         if config.has_option('Main', 'use_mount'):
@@ -600,7 +595,7 @@ def get_config(parse_args=True, cfg_path=None, options=None):
         if config.has_option("Main", "utf8_decoding"):
             agentConfig["utf8_decoding"] = _is_affirmative(config.get("Main", "utf8_decoding"))
 
-        agentConfig["gce_updated_hostname"] = False
+        agentConfig["gce_updated_hostname"] = not Platform.is_win32()
         if config.has_option("Main", "gce_updated_hostname"):
             agentConfig["gce_updated_hostname"] = _is_affirmative(config.get("Main", "gce_updated_hostname"))
 
