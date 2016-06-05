@@ -130,8 +130,7 @@ CONFIG_HTTP_HEADERS = {
         'url': 'https://google.com',
         'name': 'UpService',
         'timeout': 1,
-        'headers':
-            "X-Auth-Token": "SOME-AUTH-TOKEN"
+        'headers': {"X-Auth-Token": "SOME-AUTH-TOKEN"}
     }]
 }
 
@@ -185,7 +184,7 @@ class HTTPCheckTest(AgentCheckTest):
         """
         # Run the check
         self.load_check(CONFIG_HTTP_HEADERS, AGENT_CONFIG)
-        headers = self.check._load_conf(CONFIG_HTTP_HEADERS['instances'][0])[6]
+        headers = self.check._load_conf(CONFIG_HTTP_HEADERS['instances'][0])['headers']
 
         self.assertEqual(headers["X-Auth-Token"], "SOME-AUTH-TOKEN", headers)
         expected_headers = agent_headers(AGENT_CONFIG).get('User-Agent')
