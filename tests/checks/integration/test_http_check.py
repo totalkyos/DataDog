@@ -130,7 +130,8 @@ CONFIG_HTTP_HEADERS = {
         'url': 'https://google.com',
         'name': 'UpService',
         'timeout': 1,
-        'headers': {"X-Auth-Token": "SOME-AUTH-TOKEN"}
+        'headers':
+            "X-Auth-Token": "SOME-AUTH-TOKEN"
     }]
 }
 
@@ -146,9 +147,10 @@ CONFIG_POST_METHOD = {
         'data': {
             'foo': 'bar',
             'tags': [{
-                'baz': 'qux'}]
-                }
+                'baz': 'qux'
             }]
+        }
+    }]
 }
 
 
