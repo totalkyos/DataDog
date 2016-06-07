@@ -184,7 +184,7 @@ class HTTPCheckTest(AgentCheckTest):
         """
         # Run the check
         self.load_check(CONFIG_HTTP_HEADERS, AGENT_CONFIG)
-        headers = self.check._load_conf(CONFIG_HTTP_HEADERS['instances'][0])[6]
+        headers = self.check._load_conf(CONFIG_HTTP_HEADERS['instances'][0])[8]
 
         self.assertEqual(headers["X-Auth-Token"], "SOME-AUTH-TOKEN", headers)
         expected_headers = agent_headers(AGENT_CONFIG).get('User-Agent')
@@ -290,3 +290,7 @@ class HTTPCheckTest(AgentCheckTest):
             "Datadog Agent.",
             count=1
         )
+
+    def test_post_method(self):
+        # Run the check
+        self.run_check(CONFIG_POST_METHOD)
