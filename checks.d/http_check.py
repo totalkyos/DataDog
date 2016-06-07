@@ -247,7 +247,7 @@ class HTTPCheck(NetworkCheck):
 
             r = sess.request(method.upper(), addr, auth=auth, timeout=timeout, headers=headers, proxies = instance_proxy,
                              verify=False if disable_ssl_validation else instance_ca_certs,
-                             json = data if method =='post' else None)
+                             json = data if method == 'post' else None)
 
         except (socket.timeout, requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             length = int((time.time() - start) * 1000)
