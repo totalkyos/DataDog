@@ -141,11 +141,12 @@ class OpenStackProjectScope(object):
         exception_msg = None
         try:
             auth_resp = cls.request_auth_token(auth_scope, identity, keystone_server_url, ssl_verify, proxy_config)
-        except (requests.exceptions.HTTPError, requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-            exception_msg = "Failed kaystone auth with identity:{id} scope:{scope} @{url}".format(
+        except (requests.exceptions.HTTPError, requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            exception_msg = "Failed kaystone auth with identity:{id} scope:{scope} @{url}: {ex}".format(
                 id=identity,
                 scope=auth_scope,
-                url=keystone_server_url)
+                url=keystone_server_url,
+                ex=e)
 
         if exception_msg:
             try:
@@ -356,6 +357,7 @@ class OpenStackCheck(AgentCheck):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
 
         self._ssl_verify = init_config.get("ssl_verify", True)
+        self._use_proxy = init_config.get("use_agent_proxy", True)
         self.keystone_server_url = init_config.get("keystone_server_url")
         if not self.keystone_server_url:
             raise IncompleteConfig()
@@ -376,7 +378,7 @@ class OpenStackCheck(AgentCheck):
             "http": None,
             "https": None,
         }
-        if proxy_settings:
+        if self._use_proxy and proxy_settings:
             uri = "{host}:{port}".format(
                 host=proxy_settings['host'],
                 port=proxy_settings['port'])
