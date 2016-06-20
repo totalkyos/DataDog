@@ -16,6 +16,8 @@ https://github.com/DataDog/dd-agent/compare/5.8.3...5.8.4
 * [BUGFIX] vSphere: The whole check shouldn't fail just because the check failed on a certain instance.
 * [BUGFIX] PowerDNS Recursor: The configuration file needed to be renamed from `powerdns.conf` to `powerdns_recursor.conf`.
 * [BUGFIX] SQLServer: Send service checks after every run, rather than only at the beginning.
+* [BUFIX] HAProxy: Add `collate_status_tags_per_host` flag
+* [BUGFIX] WMI: Allows user to set a profider in request data. 
 
 
 # 5.8.2 / 05-24-2016
