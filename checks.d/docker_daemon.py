@@ -673,6 +673,7 @@ class DockerDaemon(AgentCheck):
             self.log.warning('Disk metrics collection is enabled but docker info did not'
                              ' report any. Your storage driver might not support them, skipping.')
             return
+        self.log.debug('DriverStatus: %s', driver_status)
         for metric in driver_status:
             # only consider metrics about disk space
             if len(metric) == 2 and 'Space' in metric[0]:
@@ -688,7 +689,9 @@ class DockerDaemon(AgentCheck):
                 elif 'Space Available' in metric[0]:
                     stats['docker.{0}.free'.format(mtype)] = metric[1]
         stats = self._format_disk_metrics(stats)
+        self.log.debug('stats before calc_percent_disk_stats: %s', stats)
         stats.update(self._calc_percent_disk_stats(stats))
+        self.log.debug('stats after calc_percent_disk_stats: %s', stats)
         tags = self._get_tags()
         for name, val in stats.iteritems():
             if val is not None:
@@ -719,7 +722,8 @@ class DockerDaemon(AgentCheck):
             free = stats.get('docker.{0}.free'.format(mtype))
             if used and total and free and ceil(total) < free + used:
                 self.log.error('used, free, and total disk metrics may be wrong, '
-                               'unable to calculate percentage.')
+                               'unable to calculate percentage. '
+                               'used: %s, free: %s, total: %s', used, free, total)
                 return {}
             try:
                 if isinstance(used, int):
