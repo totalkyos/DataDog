@@ -31,6 +31,4 @@ install:
 build: off
 test_script:
   - set PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
-  - bundle exec rake ci:run[default]
-  - bundle exec rake ci:run[core_integration]
   - bundle exec rake ci:run[windows]
