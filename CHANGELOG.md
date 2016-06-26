@@ -17,7 +17,13 @@ https://github.com/DataDog/dd-agent/compare/5.8.3...5.8.4
 * [BUGFIX] PowerDNS Recursor: The configuration file needed to be renamed from `powerdns.conf` to `powerdns_recursor.conf`.
 * [BUGFIX] SQLServer: Send service checks after every run, rather than only at the beginning.
 * [BUFIX] HAProxy: Add `collate_status_tags_per_host` flag
-* [BUGFIX] WMI: Allows user to set a profider in request data. 
+* [BUGFIX] WMI: Allows user to set a profider in request data.
+* [IMPROVEMENT] Docker: Bump docker-py to 1.8.1 for network features support
+* [BUGFIX] Service Discovery: use get_identifier instead of buggy image name extraction
+* [BUGFIX] Service Discovery: use docker hostname rather than default route to query cadvisor and kublet
+* [BUGFIX] Service Discovery: improvements for testing, logging and service variable interpolation
+
+
 
 
 # 5.8.2 / 05-24-2016
