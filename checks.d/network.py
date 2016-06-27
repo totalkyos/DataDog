@@ -8,6 +8,7 @@ Collects network metrics.
 # stdlib
 import re
 import socket
+from collections import defaultdict
 
 # project
 from checks import AgentCheck
@@ -558,13 +559,12 @@ class Network(AgentCheck):
         """
         Collect metrics about connections state using psutil
         """
-        metrics = dict.fromkeys(self.CX_STATE_GAUGE.values(), 0)
+        metrics = defaultdict(int)
         for conn in psutil.net_connections():
             protocol = self._parse_protocol_psutil(conn)
             status = self.TCP_STATES['psutil'].get(conn.status)
             metric = self.CX_STATE_GAUGE.get((protocol, status))
             if metric is None:
-                print(protocol, status)
                 self.log.warning('Metric not found for: %s,%s', protocol, status)
             else:
                 metrics[metric] += 1
