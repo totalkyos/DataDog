@@ -523,6 +523,10 @@ class MySql(AgentCheck):
             metrics.update(SCHEMA_VARS)
 
         if _is_affirmative(options.get('replication', False)):
+            # Explicit role set?
+            is_slave = _is_affirmative(options.get('is_slave'))
+            is_master = None if is_slave is None else not is_slave
+
             # Get replica stats
             results.update(self._get_replica_stats(db))
             results.update(self._get_slave_status(db))
@@ -556,7 +560,7 @@ class MySql(AgentCheck):
 
             # if we don't yet have a status - inspect
             if slave_running_status == AgentCheck.UNKNOWN:
-                if self._is_master(slaves, binlog_running):  # master
+                if self._is_master(slaves, binlog_running, is_master):  # master
                     if slaves > 0 and binlog_running:
                         slave_running_status = AgentCheck.OK
                     else:
@@ -601,8 +605,12 @@ class MySql(AgentCheck):
                              % self.MAX_CUSTOM_QUERIES)
 
 
-    def _is_master(self, slaves, binlog):
-        if slaves > 0 or binlog:
+    def _is_master(self, slaves, binlog, master=None):
+        if master:
+            return True
+
+        # best guess
+        if master is None and (slaves > 0 or binlog):
             return True
 
         return False
